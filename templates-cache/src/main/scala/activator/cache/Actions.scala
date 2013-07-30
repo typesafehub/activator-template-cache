@@ -77,6 +77,10 @@ object Actions {
         // TODO - Maybe the cache should use ProcessResult for better error propogation from the GET GO.
         // That way we know exactly what the failure is.
         template <- Validating(templateOpt getOrElse sys.error(s"Template ${id} not found, or unable to be downloaded."))
+        _ <- Validating {
+          if (location.exists && !location.list().isEmpty)
+            throw new Exception(s"$location already has files in it")
+        }
         _ <- Validating.withMsg(s"Failed to create $location") {
           if (!location.exists) IO createDirectory location
         }
