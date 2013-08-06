@@ -16,8 +16,8 @@ case class AuthorDefinedTemplateMetadata(
   authorName: Option[String], // author's name
   authorLink: Option[String], // link to go to when clicking on author's name
   tags: Seq[String], // A set of folksonomy tags describing what's in this template, used for searching.
-  templateTemplate: Boolean // this template is for making another template, so props/tutorial should be cloned
-  ) {
+  templateTemplate: Boolean, // this template is for making another template, so props/tutorial should be cloned
+  sourceLink: Option[String]) {
 
   // we handle null because we assume untrusted fields
   private def cleanup(s: String): String = {
@@ -30,7 +30,7 @@ case class AuthorDefinedTemplateMetadata(
   def cleanup(): AuthorDefinedTemplateMetadata = {
     copy(name = cleanup(name), title = cleanup(title), description = cleanup(description),
       authorName = authorName.map(cleanup(_)), authorLink = authorLink.map(cleanup(_)),
-      tags = tags.map(cleanup(_)))
+      tags = tags.map(cleanup(_)), sourceLink = sourceLink.map(cleanup(_)))
   }
 
   // this should assume the fields in the metadata are completely untrusted
@@ -106,7 +106,8 @@ case class AuthorDefinedTemplateMetadata(
     val errors = nameCheck(name, "name") ++ oneLineCheck(title, "title") ++
       paragraphCheck(description, "description") ++ authorLink.map(linkCheck(_, "authorLink")).getOrElse(Nil) ++
       authorName.map(oneLineCheck(_, "authorName")).getOrElse(Nil) ++
-      tags.flatMap(tagCheck(_, "tags")) ++ noneEmpty(tags, "tags")
+      tags.flatMap(tagCheck(_, "tags")) ++ noneEmpty(tags, "tags") ++
+      sourceLink.map(linkCheck(_, "sourceLink")).getOrElse(Nil)
 
     if (errors.isEmpty)
       ProcessSuccess(this)
@@ -134,7 +135,8 @@ case class IndexStoredTemplateMetadata(
   timeStamp: Long,
   featured: Boolean, // Display on the home page.
   usageCount: Option[Long], // Usage counts pulled from website.
-  templateTemplate: Boolean // is it a meta-template for making templates
+  templateTemplate: Boolean, // is it a meta-template for making templates
+  sourceLink: String // link to the source code online
   ) {
 
 }
@@ -143,12 +145,13 @@ object IndexStoredTemplateMetadata {
   // calling this method 'apply' mangles Json.writes/Json.reads due to a Play bug
   // (it's kind of a lame method anyway, we might want to get rid of it)
   def fromAuthorDefined(id: String, userConfig: AuthorDefinedTemplateMetadata, timeStamp: Long,
-    featured: Boolean, usageCount: Option[Long], fallbackAuthorName: String, fallbackAuthorLink: String): IndexStoredTemplateMetadata = {
+    featured: Boolean, usageCount: Option[Long], fallbackAuthorName: String, fallbackAuthorLink: String,
+    fallbackSourceLink: String): IndexStoredTemplateMetadata = {
     IndexStoredTemplateMetadata(id = id, name = userConfig.name, title = userConfig.title, description = userConfig.description,
       authorName = userConfig.authorName.getOrElse(fallbackAuthorName),
       authorLink = userConfig.authorLink.getOrElse(fallbackAuthorLink),
       tags = userConfig.tags, timeStamp = timeStamp, featured = featured, usageCount = usageCount,
-      templateTemplate = userConfig.templateTemplate)
+      templateTemplate = userConfig.templateTemplate, sourceLink = userConfig.sourceLink.getOrElse(fallbackSourceLink))
   }
 }
 
@@ -169,6 +172,7 @@ case class TemplateMetadata(
   def featured = persistentConfig.featured
   def usageCount = persistentConfig.usageCount
   def templateTemplate = persistentConfig.templateTemplate
+  def sourceLink = persistentConfig.sourceLink
 }
 
 // things that we can do to an index via the REST API,

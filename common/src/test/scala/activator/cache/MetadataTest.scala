@@ -8,7 +8,8 @@ class MetadataTest {
   @Test
   def cleanupAuthorDefined(): Unit = {
     val cleaned = AuthorDefinedTemplateMetadata(name = "foo", title = "bar", description = "baz\nblah",
-      authorName = Some("blah"), authorLink = Some("http://example.com/"), tags = Seq("a", "b"), templateTemplate = false)
+      authorName = Some("blah"), authorLink = Some("http://example.com/"), tags = Seq("a", "b"), templateTemplate = false,
+      sourceLink = Some("http://example.com/source"))
     val dirty = AuthorDefinedTemplateMetadata(name = cleaned.name + " ",
       title = "\n" + cleaned.title,
       description = cleaned.description.flatMap {
@@ -17,7 +18,8 @@ class MetadataTest {
       },
       authorName = cleaned.authorName.map(_ + " "),
       authorLink = cleaned.authorLink.map(" " + _),
-      tags = cleaned.tags.map(" " + _), templateTemplate = cleaned.templateTemplate)
+      tags = cleaned.tags.map(" " + _), templateTemplate = cleaned.templateTemplate,
+      sourceLink = cleaned.sourceLink.map(" " + _))
     assertEquals(cleaned, dirty.cleanup())
   }
 
@@ -26,12 +28,14 @@ class MetadataTest {
     // Some(null) and Seq(null) are just twisted and not really expected,
     // but the validate routine handles them anyway
     val broken = AuthorDefinedTemplateMetadata(name = null, title = null, description = null,
-      authorName = Some(null), authorLink = Some(null), tags = Seq(null), templateTemplate = false)
+      authorName = Some(null), authorLink = Some(null), tags = Seq(null), templateTemplate = false,
+      sourceLink = Some(null))
     val result = broken.validate()
     assertEquals(
       ProcessFailure(Seq(ProcessError("Missing field 'name'", None), ProcessError("Missing field 'title'", None),
         ProcessError("Missing field 'description'", None), ProcessError("Missing field 'authorLink'", None),
-        ProcessError("Missing field 'authorName'", None), ProcessError("Missing field 'tags'", None))),
+        ProcessError("Missing field 'authorName'", None), ProcessError("Missing field 'tags'", None),
+        ProcessError("Missing field 'sourceLink'", None))),
       result)
   }
 
@@ -43,7 +47,8 @@ class MetadataTest {
       authorName = Some(""), // empty string
       authorLink = Some("a^%"), // not a valid link
       tags = Seq("a b", "^%@#", "foo_bar", ""), // invalid stuff in tags
-      templateTemplate = false)
+      templateTemplate = false,
+      sourceLink = Some("$@"))
     val result = broken.cleanup().validate()
     assertEquals(
       ProcessFailure(Seq(ProcessError("name contains invalid control characters (maybe a newline)", None),
@@ -62,7 +67,8 @@ class MetadataTest {
   @Test
   def validateUrlUnfriendlyNames(): Unit = {
     val base = AuthorDefinedTemplateMetadata(name = "foo", title = "bar", description = "baz\nblah",
-      authorName = Some("blah"), authorLink = Some("http://example.com/"), tags = Seq("a", "b"), templateTemplate = false)
+      authorName = Some("blah"), authorLink = Some("http://example.com/"), tags = Seq("a", "b"), templateTemplate = false,
+      sourceLink = Some("http://example.com/source/"))
     assertEquals("base is valid", ProcessSuccess(base), base.validate())
 
     for (c <- Seq('/', ' ', '%')) {

@@ -67,7 +67,8 @@ trait IndexDbTest {
       timeStamp = 1L,
       featured = true,
       usageCount = None,
-      templateTemplate = true),
+      templateTemplate = true,
+      sourceLink = "http://example.com/source"),
       IndexStoredTemplateMetadata(
         id = "ID-2",
         name = "url-friendly-name-2",
@@ -79,7 +80,8 @@ trait IndexDbTest {
         timeStamp = 1L,
         featured = false,
         usageCount = None,
-        templateTemplate = false))
+        templateTemplate = false,
+        sourceLink = "http://example.com/source"))
 
   @Before
   def preStart(): Unit = {
