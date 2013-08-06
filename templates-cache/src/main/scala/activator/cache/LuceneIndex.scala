@@ -66,6 +66,7 @@ object LuceneIndex {
   val FIELD_AUTHOR_NAME = "authorName"
   val FIELD_AUTHOR_LINK = "authorLink"
   val FIELD_TEMPLATE_TEMPLATE = "templateTemplate"
+  val FIELD_SOURCE_LINK = "sourceLink"
 
   val FIELD_TRUE_VALUE = "true"
   val FIELD_FALSE_VALUE = "false"
@@ -94,6 +95,8 @@ object LuceneIndex {
     }
     val featured = (doc get FIELD_FEATURED) == FIELD_TRUE_VALUE
     val templateTemplate = (doc get FIELD_TEMPLATE_TEMPLATE) == FIELD_TRUE_VALUE
+    // sourceLink may not be present in old indexes
+    val sourceLink = Option(doc get FIELD_SOURCE_LINK)
 
     //val
     IndexStoredTemplateMetadata(
@@ -107,7 +110,10 @@ object LuceneIndex {
       timeStamp = ts,
       featured = featured,
       usageCount = usageCount,
-      templateTemplate = templateTemplate)
+      templateTemplate = templateTemplate,
+      // this getOrElse is just to deal with old records without exploding;
+      // newly-published templates will always have the source link
+      sourceLink = sourceLink.getOrElse("http://typesafe.com/"))
   }
 
   def metadataToDocument(metadata: IndexStoredTemplateMetadata): Document = {
@@ -123,6 +129,7 @@ object LuceneIndex {
     doc.add(new StringField(FIELD_FEATURED, booleanToString(metadata.featured), Field.Store.YES))
     doc.add(new StringField(FIELD_USAGE_COUNT, usageToString(metadata.usageCount), Field.Store.YES))
     doc.add(new StringField(FIELD_TEMPLATE_TEMPLATE, booleanToString(metadata.templateTemplate), Field.Store.YES))
+    doc.add(new StringField(FIELD_SOURCE_LINK, metadata.sourceLink, Field.Store.YES))
     doc
   }
 

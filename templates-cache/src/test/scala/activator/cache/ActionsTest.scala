@@ -30,7 +30,8 @@ class ActionsTest {
       timeStamp = 1L,
       featured = true,
       usageCount = None,
-      templateTemplate = true)
+      templateTemplate = true,
+      sourceLink = "http://example.com/source")
 
     val metadataFile = new java.io.File(dir, Constants.METADATA_FILENAME)
 
