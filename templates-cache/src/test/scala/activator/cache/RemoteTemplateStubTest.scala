@@ -171,7 +171,8 @@ class RemoteTemplateStubTest {
       authorName = "Jim Bob",
       authorLink = "http://example.com/jimbob/",
       tags = Seq("test", "template"),
-      templateTemplate = false),
+      templateTemplate = false,
+      sourceLink = "http://example.com/source"),
     locallyCached = true)
 
   val nonLocalTemplate = TemplateMetadata(
@@ -186,7 +187,8 @@ class RemoteTemplateStubTest {
       authorName = "Jim Bob",
       authorLink = "http://example.com/jimbob/",
       tags = Seq("test", "template"),
-      templateTemplate = true),
+      templateTemplate = true,
+      sourceLink = "http://example.com/source"),
     locallyCached = false)
 
   val resolvedNonLocalTemplate =
@@ -204,7 +206,8 @@ class RemoteTemplateStubTest {
       authorName = "Jim Bob",
       authorLink = "http://example.com/jimbob/",
       tags = Seq("test", "template"),
-      templateTemplate = false),
+      templateTemplate = false,
+      sourceLink = "http://example.com/source"),
     locallyCached = false)
 
   val resolvedNewNonLocalTemplate =
