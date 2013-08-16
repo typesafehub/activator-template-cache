@@ -38,8 +38,8 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
   protected def makeProxyableClientConfiguration(): ClientConfiguration = {
     val config = new ClientConfiguration().withProtocol(Protocol.HTTPS)
     // Check if we need a proxy
-    def doIf(props: String)(f: String => Unit): Unit = {
-      sys.props.get("http.proxyHost").foreach(f)
+    def doIf(prop: String)(f: String => Unit): Unit = {
+      sys.props.get(prop).foreach(f)
     }
     // TODO - According to spec, https + http proxies can be different for java.
     //   Are our users using different ones?
