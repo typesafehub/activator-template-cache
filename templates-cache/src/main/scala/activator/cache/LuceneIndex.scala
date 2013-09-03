@@ -147,20 +147,19 @@ class LuceneIndex(dirName: File, dir: Directory) extends IndexDb {
   val searcher = new IndexSearcher(reader)
   // TODO - Figure out which fields we care about...
   val parser = new MultiFieldQueryParser(LUCENE_VERSION,
-    Array(FIELD_TITLE, FIELD_DESC, FIELD_TAGS),
+    Array(FIELD_TITLE, FIELD_DESC, FIELD_TAGS, FIELD_NAME),
     analyzer);
 
   def template(id: String): Option[IndexStoredTemplateMetadata] =
     executeQuery(new TermQuery(new Term(FIELD_ID, id)), 1).headOption
 
   def templateByName(name: String): Option[IndexStoredTemplateMetadata] = {
-    // Here we manually tokenize the names, yay.
-    // This is because lucene, under the scenes, is tokenizing our names.
-    val tokens = name.split("[\\W]+")
-    val terms = tokens map { token => new Term(FIELD_NAME, token) }
-    val query = new PhraseQuery()
-    terms foreach query.add
-    executeQuery(query, 1).headOption
+    // NOTE: We need to bump binary compatibility at some point
+    // and store RAW names (un-tokenzied) so we can do direct indexing on name.
+    //  For now, we just do an in-memory additional filter.  We assume
+    // search is powerful enough to find what we want.
+    search(name).find(_.name == name)
+
   }
 
   def featured: Iterable[IndexStoredTemplateMetadata] =
