@@ -25,7 +25,7 @@ object Constants {
   // keep old clients from seeing new indexes, for example we are bumping
   // this in the sbt 0.12 -> 0.13 transition.
   // INDEX_BINARY_MAJOR_VERSION below represents a breaking change in *format*.
-  val INDEX_REPOSITORY_GENERATION = "1"
+  val INDEX_REPOSITORY_GENERATION = "2"
 
   // this number is stored in the index itself and must MATCH EXACTLY
   // what the consumer of the index expects; that is, bumping it causes
