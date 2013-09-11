@@ -75,7 +75,8 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
         val indexProps = new File(tmpDir, "index.properties")
         resolveIndexProperties(indexProps)
         val props = new CacheProperties(indexProps)
-        def recentEnough = props.cacheIndexBinaryIncrementVersion >= Constants.INDEX_BINARY_INCREMENT_VERSION
+        def recentEnough = props.cacheIndexBinaryMajorVersion == Constants.INDEX_BINARY_MAJOR_VERSION &&
+          props.cacheIndexBinaryIncrementVersion >= Constants.INDEX_BINARY_INCREMENT_VERSION
         def differentCache = props.cacheIndexHash != currentHash
         differentCache && recentEnough
       }
