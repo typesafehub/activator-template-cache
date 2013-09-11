@@ -37,7 +37,8 @@ class TestUriRemoteTemplateRepository {
     "dummy.db" -> "Dummy DB")
   var hash: String = ""
 
-  def makeRepo(dir: File, binaryIncrementVersion: Int = Constants.INDEX_BINARY_INCREMENT_VERSION): Unit = {
+  def makeRepo(dir: File, binaryMajorVersion: Int = Constants.INDEX_BINARY_MAJOR_VERSION,
+    binaryIncrementVersion: Int = Constants.INDEX_BINARY_INCREMENT_VERSION): Unit = {
     val paths = new Layout(dir.toURI)
     IO.withTestTempDirectory { tmpDir =>
       val zip = new File(tmpDir, "test.zip")
@@ -50,6 +51,7 @@ class TestUriRemoteTemplateRepository {
       IO.touch(propsFile)
       val cacheProps = new CacheProperties(propsFile)
       cacheProps.cacheIndexHash = hash
+      cacheProps.cacheIndexBinaryMajorVersion = binaryMajorVersion
       cacheProps.cacheIndexBinaryIncrementVersion = binaryIncrementVersion
       cacheProps.save("Updated hash")
     }
@@ -85,17 +87,65 @@ class TestUriRemoteTemplateRepository {
   }
 
   @Test
-  def shouldNotResolveTooLargeAnIncrementVersion(): Unit = {
+  def shouldNotResolveTooSmallAnIncrementVersion(): Unit = {
     IO.withTestTempDirectory { tmpDir =>
       // TODO - Make a zip
       val repo = new File(tmpDir, "remote-repo")
       IO.createDirectory(repo)
-      makeRepo(repo, Constants.INDEX_BINARY_INCREMENT_VERSION - 1)
+      makeRepo(repo, binaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION - 1)
 
       val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with older binary increment version!",
+        remote.hasNewIndex("RANDOM-INDEX"))
+    }
+  }
+
+  @Test
+  def shouldResolveLargerIncrementVersion(): Unit = {
+    IO.withTestTempDirectory { tmpDir =>
+      // TODO - Make a zip
+      val repo = new File(tmpDir, "remote-repo")
+      IO.createDirectory(repo)
+      makeRepo(repo, binaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION + 1)
+
+      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      // Now let's download and check stuff.
+      assertTrue(
+        "Failed to pull new index with higher increment version!",
+        remote.hasNewIndex("RANDOM-INDEX"))
+    }
+  }
+
+  @Test
+  def shouldNotResolveTooSmallMajorVersion(): Unit = {
+    IO.withTestTempDirectory { tmpDir =>
+      // TODO - Make a zip
+      val repo = new File(tmpDir, "remote-repo")
+      IO.createDirectory(repo)
+      makeRepo(repo, binaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION - 1)
+
+      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      // Now let's download and check stuff.
+      assertFalse(
+        "Cannot pull an index with older binary major version!",
+        remote.hasNewIndex("RANDOM-INDEX"))
+    }
+  }
+
+  @Test
+  def shouldNotResolveTooLargeMajorVersion(): Unit = {
+    IO.withTestTempDirectory { tmpDir =>
+      // TODO - Make a zip
+      val repo = new File(tmpDir, "remote-repo")
+      IO.createDirectory(repo)
+      makeRepo(repo, binaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION + 1)
+
+      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      // Now let's download and check stuff.
+      assertFalse(
+        "Cannot pull an index with newer binary major version!",
         remote.hasNewIndex("RANDOM-INDEX"))
     }
   }

@@ -31,7 +31,7 @@ object Layout {
   }
 
   def indexDirectory(baseRepo: URI): URI =
-    baseRepo / INDEXES_DIRECTORY_NAME / versionNumber(Constants.INDEX_BINARY_VERSION)
+    baseRepo / INDEXES_DIRECTORY_NAME / versionNumber(Constants.INDEX_REPOSITORY_GENERATION)
   def currentIndexTagUri(baseRepo: URI): URI =
     indexDirectory(baseRepo) / CURRENT_INDEX_TAG_FILE
   def indexUri(baseRepo: URI, hash: String): URI =

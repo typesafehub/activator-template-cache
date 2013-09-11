@@ -22,6 +22,13 @@ class CacheProperties(location: java.io.File) {
     props.setProperty(Constants.CACHE_HASH_PROPERTY, newId)
   }
 
+  def cacheIndexBinaryMajorVersion =
+    // default to 0 because the original binary version was 0 but we didn't write it to the properties file
+    // at first
+    Option(props.getProperty(Constants.CACHE_INDEX_MAJOR_VERSION_PROPERTY)) map (_.toInt) getOrElse 0
+  def cacheIndexBinaryMajorVersion_=(version: Int) =
+    props.setProperty(Constants.CACHE_INDEX_MAJOR_VERSION_PROPERTY, version.toString)
+
   def cacheIndexBinaryIncrementVersion =
     props.getProperty(Constants.CACHE_INDEX_INCREMENT_VERSION_PROPERTY).toInt
   def cacheIndexBinaryIncrementVersion_=(version: Int) =
@@ -48,6 +55,7 @@ object CacheProperties {
   def write(file: File, serial: Long, hash: String): ProcessResult[File] =
     Validating.withMsg("Unable to create new cache properties.") {
       val props = new CacheProperties(file)
+      props.cacheIndexBinaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION
       props.cacheIndexBinaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION
       props.cacheIndexHash = hash
       props.cacheIndexSerial = serial
