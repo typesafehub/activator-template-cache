@@ -45,10 +45,17 @@ object Actions {
   }
 
   private def bestEffortFixApplicationSecret(basedir: java.io.File): Unit = {
-    // TODO - use BOM or user configurable charset?
     val charset = java.nio.charset.Charset.forName("UTF-8")
-    // TODO - we should look for ANY conf directory with an application.conf in it...
-    val applicationConf = new File(basedir, "conf/application.conf")
+    // Here we use a heuristic that we know the directory in which  configuration is located
+    // and that the name will be application.conf, *AND* the format of the config line is one
+    // that we expect.
+    // Since any of these invariants are configurable, we should not fail in the event that
+    // we cannot find the config files or they do not have the config we expect.
+    // Templates which want new application secrets will need to abide by these conventions.
+    // Right now, all templates do, but it's a fuzzy interface.
+    val base = sbt.PathFinder(basedir)
+    val applicationConf: Seq[File] = 
+      (((base ** "conf") +++ (base ** "resources")) * "application.conf").get
     // helper to replace the secret in a given file.
     def replaceSecret(file: File): Unit = {
       val contents = IO.read(file, charset)
@@ -58,7 +65,7 @@ object Actions {
       }
     }
     for {
-      file <- Seq(applicationConf)
+      file <- applicationConf
       if file.exists
     } replaceSecret(file)
   }
