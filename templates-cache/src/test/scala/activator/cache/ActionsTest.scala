@@ -19,6 +19,10 @@ class ActionsTest {
     val buildSbtFile = new File(dir, "template-build.sbt")
     IO.write(buildSbtFile, "\nname \t:= \t\"Hello\"\n")
 
+    val confDir = new File(dir, "conf")
+    IO.createDirectory(confDir)
+    val confFile = new File(confDir, "application.conf")
+    IO.write(confFile, "application.secret=\"FOO\"")
     val indexStored = IndexStoredTemplateMetadata(
       id = id,
       name = "foo",
@@ -67,6 +71,7 @@ class ActionsTest {
           templateFile -> "installed-file",
           templateFile -> "a/b/c/d/e/f/g/inside-some-directories",
           templateFile -> "project/build.properties",
+          confFile -> "conf/application.conf",
           metadataFile -> Constants.METADATA_FILENAME,
           buildSbtFile -> "build.sbt"))))
       override def tutorial(id: String) = Future.successful {
@@ -179,6 +184,27 @@ class ActionsTest {
     // see if this makes your head hurt
     assertEquals("\nname \t:= \t\"\"\"test\"\"\"+ \"\\\"\\\"\\\"\" + \"\"\" foo bar \"\"\"+ \"\\\"\\\"\\\"\" + \"\"\" $1 $2 \n blah blah \\n \\ what\"\"\"\n",
       contents)
+  }
+
+  @Test
+  def testNewSecretInProject(): Unit = IO.withTemporaryDirectory { dir =>
+    val dummy = new Dummy(dir)
+    import dummy._
+
+    val result = Actions.cloneTemplate(DummyCache, id, installLocation, projectName = Some("foo"), filterMetadata = true)
+
+    Await.result(result, Duration(5, SECONDS)) match {
+      case ProcessFailure(errors) =>
+        throw new AssertionError("clone failed " + errors)
+      case _ =>
+    }
+
+    val confDir = new File(installLocation, "conf")
+    val props = new java.util.Properties
+    IO.reader(new File(confDir, "application.conf"))(props.load)
+
+    assertNotSame("foo", props.getProperty("application.secret"))
+    assertNotSame("FOO", props.getProperty("application.secret"))
   }
 
   @Test
