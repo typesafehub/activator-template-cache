@@ -37,6 +37,39 @@ object Actions {
     }
   }
 
+  def makeNewApplicationSecret(): String = {
+    // Mime the current play application secret stuff.
+    val random = new java.security.SecureRandom()
+    val tmp = Stream.continually((random.nextInt(74) + 48).toChar).take(64).mkString
+    tmp.replaceAll("\\\\+", "/")
+  }
+
+  private def bestEffortFixApplicationSecret(basedir: java.io.File): Unit = {
+    val charset = java.nio.charset.Charset.forName("UTF-8")
+    // Here we use a heuristic that we know the directory in which  configuration is located
+    // and that the name will be application.conf, *AND* the format of the config line is one
+    // that we expect.
+    // Since any of these invariants are configurable, we should not fail in the event that
+    // we cannot find the config files or they do not have the config we expect.
+    // Templates which want new application secrets will need to abide by these conventions.
+    // Right now, all templates do, but it's a fuzzy interface.
+    val base = sbt.PathFinder(basedir)
+    val applicationConf: Seq[File] = 
+      (((base ** "conf") +++ (base ** "resources")) * "application.conf").get
+    // helper to replace the secret in a given file.
+    def replaceSecret(file: File): Unit = {
+      val contents = IO.read(file, charset)
+      val modified = contents.replaceFirst("(application.secret[ \t]*=[ \t]*)\"[^\"]+\"", "$1" + Matcher.quoteReplacement(makeNewApplicationSecret()));
+      if (modified != contents) {
+        IO.write(file, modified, charset)
+      }
+    }
+    for {
+      file <- applicationConf
+      if file.exists
+    } replaceSecret(file)
+  }
+
   private def fixupMetadataFile(file: File, projectNameOption: Option[String]): Unit = {
     // now rename the url-friendly name in activator.properties if
     // this was copied as a template-template. We don't load
@@ -109,6 +142,9 @@ object Actions {
         }
         _ <- Validating.withMsg("Failed to rename project") {
           projectName.foreach(bestEffortRename(location, _))
+        }
+        _ <- Validating.withMsg("Failed to change application.secret") {
+          bestEffortFixApplicationSecret(location)
         }
       } yield ()
     }
