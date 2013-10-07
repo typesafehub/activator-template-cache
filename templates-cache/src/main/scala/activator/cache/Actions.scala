@@ -37,6 +37,32 @@ object Actions {
     }
   }
 
+  def makeNewApplicationSecret(): String = {
+    // Mime the current play application secret stuff.
+    val random = new java.security.SecureRandom()
+    val tmp = Stream.continually((random.nextInt(74) + 48).toChar).take(64).mkString
+    tmp.replaceAll("\\\\+", "/")
+  }
+
+  private def bestEffortFixApplicationSecret(basedir: java.io.File): Unit = {
+    // TODO - use BOM or user configurable charset?
+    val charset = java.nio.charset.Charset.forName("UTF-8")
+    // TODO - we should look for ANY conf directory with an application.conf in it...
+    val applicationConf = new File(basedir, "conf/application.conf")
+    // helper to replace the secret in a given file.
+    def replaceSecret(file: File): Unit = {
+      val contents = IO.read(file, charset)
+      val modified = contents.replaceFirst("(application.secret[ \t]*=[ \t]*)\"[^\"]+\"", "$1" + Matcher.quoteReplacement(makeNewApplicationSecret()));
+      if (modified != contents) {
+        IO.write(file, modified, charset)
+      }
+    }
+    for {
+      file <- Seq(applicationConf)
+      if file.exists
+    } replaceSecret(file)
+  }
+
   private def fixupMetadataFile(file: File, projectNameOption: Option[String]): Unit = {
     // now rename the url-friendly name in activator.properties if
     // this was copied as a template-template. We don't load
@@ -109,6 +135,9 @@ object Actions {
         }
         _ <- Validating.withMsg("Failed to rename project") {
           projectName.foreach(bestEffortRename(location, _))
+        }
+        _ <- Validating.withMsg("Failed to change application.secret") {
+          bestEffortFixApplicationSecret(location)
         }
       } yield ()
     }
