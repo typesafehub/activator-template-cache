@@ -54,12 +54,12 @@ object Actions {
     // Templates which want new application secrets will need to abide by these conventions.
     // Right now, all templates do, but it's a fuzzy interface.
     val base = sbt.PathFinder(basedir)
-    val applicationConf: Seq[File] = 
+    val applicationConf: Seq[File] =
       (((base ** "conf") +++ (base ** "resources")) * "application.conf").get
     // helper to replace the secret in a given file.
     def replaceSecret(file: File): Unit = {
       val contents = IO.read(file, charset)
-      val modified = contents.replaceFirst("(application.secret[ \t]*=[ \t]*)\"[^\"]+\"", "$1" + Matcher.quoteReplacement(makeNewApplicationSecret()));
+      val modified = contents.replaceFirst("(application.secret[ \t]*=[ \t]*)\"[^\"]+\"", "$1\"" + Matcher.quoteReplacement(makeNewApplicationSecret()) + "\"");
       if (modified != contents) {
         IO.write(file, modified, charset)
       }
