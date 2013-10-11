@@ -137,6 +137,16 @@ object InstanceValidationDetails {
   }
 }
 
+// lets us return http status code plus a string, without
+// depending on an http library
+case class HttpTextResult(code: Int, text: String)
+
+object HttpTextResult {
+  def ok(text: String) = HttpTextResult(code = 200, text = text)
+  def badRequest(text: String) = HttpTextResult(code = 400, text = text)
+  def internalServerError(text: String) = HttpTextResult(code = 500, text = text)
+}
+
 // this class has operations on the key-value store which
 // are also exported via the REST API.
 // So it keeps the backend in sync with the REST client.
@@ -165,11 +175,17 @@ trait StorageRestOps {
 
   def findRepublishCookie(name: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Option[String]]
 
-  // called anonymously by github
+  // called anonymously by github in theory in the future
+  // when we need auth on the hook
   // look up template by cookie and reload from its git url if any
   // this throws errors, but on the outermost layer we should just eat them
   // and log them rather than return them to github
   def republishHook(cookie: String)(implicit ec: ExecutionContext): Future[Unit]
+
+  // the github hook we're actually using right now, the above republishHook
+  // would only be needed if we add auth other than "use same git repo as before"
+  // the payload is the JSON we got from github, just passed along as-is.
+  def githubHook(payload: String)(implicit ec: ExecutionContext): Future[HttpTextResult]
 
   // these are all the templates that should be indexed next time we regen the index.
   // Note that some may turn out to be instances of the same template; in that case,
