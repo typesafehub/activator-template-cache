@@ -137,6 +137,16 @@ object InstanceValidationDetails {
   }
 }
 
+// lets us return http status code plus a string, without
+// depending on an http library
+case class HttpTextResult(code: Int, text: String)
+
+object HttpTextResult {
+  def ok(text: String) = HttpTextResult(code = 200, text = text)
+  def badRequest(text: String) = HttpTextResult(code = 400, text = text)
+  def internalServerError(text: String) = HttpTextResult(code = 500, text = text)
+}
+
 // this class has operations on the key-value store which
 // are also exported via the REST API.
 // So it keeps the backend in sync with the REST client.
@@ -175,7 +185,7 @@ trait StorageRestOps {
   // the github hook we're actually using right now, the above republishHook
   // would only be needed if we add auth other than "use same git repo as before"
   // the payload is the JSON we got from github, just passed along as-is.
-  def githubHook(payload: String)(implicit ec: ExecutionContext): Future[Unit]
+  def githubHook(payload: String)(implicit ec: ExecutionContext): Future[HttpTextResult]
 
   // these are all the templates that should be indexed next time we regen the index.
   // Note that some may turn out to be instances of the same template; in that case,
