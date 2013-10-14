@@ -31,14 +31,17 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     catch {
       case e: Exception =>
         log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
-        throw e
+        throw RepositoryException(s"Failed to download ${url}", e)
     }
   }
 
-  protected def makeClient(): AmazonS3Client = {
+  protected def makeClient(): AmazonS3Client = try {
     new AmazonS3Client(
       new AnonymousAWSCredentials(),
       new ClientConfiguration().withProtocol(Protocol.HTTPS))
+  } catch {
+    case t: Exception =>
+      throw RepositoryException(s"Failed to start Amazon s3 client!", t)
   }
 
   private def cleanLocation(path: String): String =
@@ -46,13 +49,16 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     else path
   // Note: Thanks to CLOUD FRONT on AMazon S3, we'd like to
   // grab the more current index file using an anonymous S3 client.
-  protected def downloadFromS3(url: URI, dest: File): Unit = {
+  protected def downloadFromS3(url: URI, dest: File): Unit = try {
     log.debug(s"Downloading S3 bucket ${url} underneath base ${base}")
     val client = makeClient()
 
     val (bucket, key) = getBucketAndKey(url)
     val request = new GetObjectRequest(bucket, key)
     client.getObject(request, dest)
+  } catch {
+    case e: Exception =>
+      throw RepositoryException(s"Failed to download ${url} form s3", e)
   }
 
   protected def getBucketAndKey(url: URI): (String, String) =
@@ -110,8 +116,8 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     try downloadFromS3(layout.currentIndexTag, localPropsFile)
     catch {
       // Our backup for local-file based testing...
-      case NonFatal(err) =>
-        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${err.getClass.getName}: ${err.getMessage}")
+      case ex: RepositoryException =>
+        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
         download(layout.currentIndexTag.toURL, localPropsFile)
     }
     localPropsFile

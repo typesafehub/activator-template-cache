@@ -2,10 +2,11 @@ package activator
 package cache
 
 import java.io.File
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 import sbt.{ IO, PathFinder }
 import scala.util.control.NonFatal
 import akka.actor.Status
+import activator.templates.repository.RepositoryException
 
 /** This class represents the inability to resolve a template from the internet, and not some other fatal error. */
 case class ResolveTemplateException(msg: String, cause: Throwable) extends RuntimeException(msg, cause)
@@ -20,7 +21,7 @@ case class ResolveTemplateException(msg: String, cause: Throwable) extends Runti
  * TODO - Add a manager in front of this actor that knows how to update the lucene index and reboot this guy.
  */
 class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean = true)
-  extends Actor with ForwardingExceptions {
+  extends Actor with ForwardingExceptions with ActorLogging {
   import TemplateCacheActor._
 
   def receive: Receive = forwardingExceptionsToFutures {
@@ -71,8 +72,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           Some(Template(meta, fileMappings))
         } catch {
           case ex: ResolveTemplateException =>
-            // TODO -  A better logger
-            println(s"Failed to resolve template: $id from remote repository.")
+            log.error(s"Failed to resolve template: $id from remote repository.")
             None
         }
       case _ => None
@@ -118,10 +118,16 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     props = new CacheProperties(new File(location, Constants.CACHE_PROPS_FILENAME))
     // Here we check to see if we need to update the local cache.
     val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
-    if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
-      val newHash = remote.resolveIndexTo(indexFile)
-      props.cacheIndexHash = newHash
-      props.save("Updating the local index.")
+    // Here we need to not throw...
+    try {
+      if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
+        val newHash = remote.resolveIndexTo(indexFile)
+        props.cacheIndexHash = newHash
+        props.save("Updating the local index.")
+      }
+    } catch {
+      case e: RepositoryException => // Ignore, we're in offline mode.
+        log.info("Unable to check remote server for template updates.")
     }
     // Now we open the index file.
     index = provider.open(indexFile)
