@@ -6,6 +6,7 @@ import akka.actor.Actor
 import sbt.{ IO, PathFinder }
 import scala.util.control.NonFatal
 import akka.actor.Status
+import activator.templates.repository.RepositoryException
 
 /** This class represents the inability to resolve a template from the internet, and not some other fatal error. */
 case class ResolveTemplateException(msg: String, cause: Throwable) extends RuntimeException(msg, cause)
@@ -118,10 +119,17 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     props = new CacheProperties(new File(location, Constants.CACHE_PROPS_FILENAME))
     // Here we check to see if we need to update the local cache.
     val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
-    if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
-      val newHash = remote.resolveIndexTo(indexFile)
-      props.cacheIndexHash = newHash
-      props.save("Updating the local index.")
+    // Here we need to not throw...
+    try {
+      if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
+        val newHash = remote.resolveIndexTo(indexFile)
+        props.cacheIndexHash = newHash
+        props.save("Updating the local index.")
+      }
+    } catch {
+      case e: RepositoryException => // Ignore, we're in offline mode.
+        // TODO - use actor log.
+        System.err.println("Unable to check remote server for template updates.")
     }
     // Now we open the index file.
     index = provider.open(indexFile)
