@@ -2,7 +2,7 @@ package activator
 package cache
 
 import java.io.File
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 import sbt.{ IO, PathFinder }
 import scala.util.control.NonFatal
 import akka.actor.Status
@@ -21,7 +21,7 @@ case class ResolveTemplateException(msg: String, cause: Throwable) extends Runti
  * TODO - Add a manager in front of this actor that knows how to update the lucene index and reboot this guy.
  */
 class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean = true)
-  extends Actor with ForwardingExceptions {
+  extends Actor with ForwardingExceptions with ActorLogging {
   import TemplateCacheActor._
 
   def receive: Receive = forwardingExceptionsToFutures {
@@ -72,8 +72,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           Some(Template(meta, fileMappings))
         } catch {
           case ex: ResolveTemplateException =>
-            // TODO -  A better logger
-            println(s"Failed to resolve template: $id from remote repository.")
+            log.error(s"Failed to resolve template: $id from remote repository.")
             None
         }
       case _ => None
@@ -128,8 +127,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
       }
     } catch {
       case e: RepositoryException => // Ignore, we're in offline mode.
-        // TODO - use actor log.
-        System.err.println("Unable to check remote server for template updates.")
+        log.info("Unable to check remote server for template updates.")
     }
     // Now we open the index file.
     index = provider.open(indexFile)
