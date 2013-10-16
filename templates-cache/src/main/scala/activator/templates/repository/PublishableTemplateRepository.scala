@@ -1,11 +1,12 @@
+/**
+ * Copyright (C) 2013 Typesafe <http://typesafe.com/>
+ */
 package activator
 package templates
 package repository
 
 import cache.RemoteTemplateRepository
-import java.io.File
 import com.typesafe.config.Config
-import akka.event.LoggingAdapter
 import java.util.UUID
 
 /**

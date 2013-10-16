@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) 2013 Typesafe <http://typesafe.com/>
+ */
 package activator
 package cache
 
@@ -10,9 +13,7 @@ import lucene.analysis.standard.StandardAnalyzer
 import lucene.document._
 import lucene.search.IndexSearcher
 import lucene.search.TermQuery
-import lucene.queryparser.classic.QueryParser
 import lucene.queryparser.classic.MultiFieldQueryParser
-import org.apache.lucene.search.PhraseQuery
 
 class LuceneIndexDbException(msg: String, cause: Throwable)
   extends Exception(msg, cause)

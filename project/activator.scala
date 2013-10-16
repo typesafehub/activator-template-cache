@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) 2013 Typesafe <http://typesafe.com/>
+ */
 import sbt._
 import Keys._
 import com.typesafe.sbt.SbtScalariform

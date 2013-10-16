@@ -1,9 +1,11 @@
+/**
+ * Copyright (C) 2013 Typesafe <http://typesafe.com/>
+ */
 package activator
 package templates
 package repository
 
 import cache._
-import java.net.URI
 import java.io.File
 import sbt.{ IO, PathFinder }
 
