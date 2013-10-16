@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) 2013 Typesafe <http://typesafe.com/>
+ */
 import sbt.IO
 import java.io.File
 import java.util.Random
@@ -7,7 +10,6 @@ import java.util.Properties
 import java.nio.charset.Charset
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
-import java.nio.charset.MalformedInputException
 
 package object activator {
 

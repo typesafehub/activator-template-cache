@@ -7,7 +7,6 @@ import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 import language.implicitConversions
-import java.net.URISyntaxException
 
 object EnhancedURI {
   implicit def uri2enhanced(uri: URI) = new EnhancedURI(uri)
