@@ -1,12 +1,12 @@
+/**
+ * Copyright (C) 2013 Typesafe <http://typesafe.com/>
+ */
 package activator.storage
 
 import java.util.UUID
 import java.net.URI
 import scala.concurrent.Future
-import scala.concurrent.future
 import scala.concurrent.ExecutionContext
-import scala.util.control.NonFatal
-import scala.annotation.tailrec
 import activator.cache.AuthorDefinedTemplateMetadata
 import activator.cache.IndexStoredTemplateMetadata
 import activator.ProcessResult
