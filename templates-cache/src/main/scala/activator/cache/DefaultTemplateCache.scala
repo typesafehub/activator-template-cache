@@ -27,6 +27,8 @@ class DefaultTemplateCache(
     (handler ? GetTutorial(id)).mapTo[TutorialResult].map(_.tutorial)
   def search(query: String): Future[Iterable[TemplateMetadata]] =
     (handler ? SearchTemplates(query)).mapTo[TemplateQueryResult].map(_.templates)
+  def searchByName(name: String): Future[Option[TemplateMetadata]] =
+    (handler ? SearchTemplateByName(name)).mapTo[TemplateQueryResult].map(_.templates.headOption)
   def metadata: Future[Iterable[TemplateMetadata]] =
     (handler ? ListTemplates).mapTo[TemplateQueryResult].map(_.templates)
   def featured: Future[Iterable[TemplateMetadata]] =

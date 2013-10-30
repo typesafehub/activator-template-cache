@@ -82,6 +82,12 @@ class ActionsTest {
           "foo.png" -> tutorialOtherFile)))
       }
       override def search(query: String) = metadata
+      override def searchByName(name: String): Future[Option[TemplateMetadata]] =
+        if (name == m.name) {
+          Future.successful(Some(m))
+        } else {
+          Future.successful(None)
+        }
     }
     val installLocation = new java.io.File(dir, "template-install")
 

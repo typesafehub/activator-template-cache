@@ -32,6 +32,8 @@ trait TemplateCache extends java.io.Closeable {
   def tutorial(id: String): Future[Option[Tutorial]]
   /** Search for a template within the cache. */
   def search(query: String): Future[Iterable[TemplateMetadata]]
+  /** Find a template within the cache by exact name. */
+  def searchByName(name: String): Future[Option[TemplateMetadata]]
   /** Returns all metadata we have for templates. */
   def metadata: Future[Iterable[TemplateMetadata]]
   /** Returns all the metadata meant to be featured in the initial page. */
