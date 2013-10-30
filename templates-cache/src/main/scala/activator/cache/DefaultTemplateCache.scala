@@ -31,7 +31,12 @@ class DefaultTemplateCache(
     (handler ? ListTemplates).mapTo[TemplateQueryResult].map(_.templates)
   def featured: Future[Iterable[TemplateMetadata]] =
     (handler ? ListFeaturedTemplates).mapTo[TemplateQueryResult].map(_.templates)
+
+  override def close(): Unit = {
+    actorFactory.stop(handler)
+  }
 }
+
 object DefaultTemplateCache {
   /** Creates a default template cache for us. */
   def apply(actorFactory: ActorRefFactory,
