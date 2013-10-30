@@ -31,6 +31,18 @@ trait PublishableTemplateRepository extends RemoteTemplateRepository {
     zipFile: java.io.File): ProcessResult[Unit]
 
   /**
+   * Attempts to publish a template with Activator launcher bundled.
+   *
+   * @return
+   *      Either nothing (Unit) or the failures.
+   */
+  def publishTemplateBundle(
+    activatorVersion: String,
+    uuid: UUID,
+    templateName: String,
+    zipFile: java.io.File): ProcessResult[Unit]
+
+  /**
    * Attempts to publish a new template index with the given serial number.
    */
   def publishIndex(indexZip: java.io.File, serial: Long): ProcessResult[Unit]

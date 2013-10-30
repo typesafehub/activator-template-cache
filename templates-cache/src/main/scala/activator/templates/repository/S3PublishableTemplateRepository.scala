@@ -59,6 +59,18 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
       result <- publish(location, zipFile)
     } yield result
 
+  def publishTemplateBundle(
+    activatorVersion: String,
+    uuid: UUID,
+    templateName: String,
+    zipFile: java.io.File): ProcessResult[Unit] =
+    for {
+      location <- Validating.withMsg(s"Unable to publish template bundle: $templateName $uuid") {
+        layout.templateBundle(activatorVersion, uuid.toString, templateName)
+      }
+      result <- publish(location, zipFile)
+    } yield result
+
   def publishIndex(indexZip: java.io.File, serial: Long): ProcessResult[Unit] =
     for {
       hash <- hashFile(indexZip)

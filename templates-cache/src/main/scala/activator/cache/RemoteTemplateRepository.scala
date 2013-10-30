@@ -7,6 +7,8 @@ package cache
 import java.io.File
 import com.typesafe.config.Config
 import akka.event.LoggingAdapter
+import java.util.UUID
+import java.net.URI
 
 trait RemoteTemplateRepository {
   /**
@@ -34,7 +36,25 @@ trait RemoteTemplateRepository {
    * @return The new hash of the index.
    */
   def resolveIndexTo(indexDirOrFile: File): String
+
+  /**
+   * Calculates the URI where we would find or publish a bundled
+   * version of the template (bundled = includes activator launcher)
+   */
+  def templateBundleURI(activatorVersion: String,
+    uuid: UUID,
+    templateName: String): URI
+
+  /**
+   * Checks whether the bundled version of the template exists.
+   */
+  def templateBundleExists(activatorVersion: String,
+    uuid: UUID,
+    templateName: String): Boolean
+
+  def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File
 }
+
 object RemoteTemplateRepository {
   def apply(config: Config, log: LoggingAdapter): RemoteTemplateRepository = {
     // TODO - Make sure this is the right way to do it from HAVOC.

@@ -11,6 +11,8 @@ import akka.actor._
 import concurrent.Await
 import concurrent.duration._
 import sbt.IO
+import java.util.UUID
+import java.net.URI
 
 class RemoteTemplateStubTest {
 
@@ -51,6 +53,16 @@ class RemoteTemplateStubTest {
       }
       localDir
     }
+
+    def templateBundleURI(activatorVersion: String,
+      uuid: UUID,
+      templateName: String): URI = ???
+
+    def templateBundleExists(activatorVersion: String,
+      uuid: UUID,
+      templateName: String): Boolean = ???
+
+    def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File = ???
   }
 
   @Before
