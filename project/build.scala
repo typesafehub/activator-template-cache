@@ -23,6 +23,7 @@ object ActivatorTemplatesBuild extends Build {
   lazy val common = (
     ActivatorProject("common")
     dependsOnRemote(
+      commonsCompress,
       sbtIo % "test"
     )
   )
