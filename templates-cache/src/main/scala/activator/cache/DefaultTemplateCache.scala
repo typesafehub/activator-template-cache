@@ -9,6 +9,8 @@ import scala.concurrent.Future
 import akka.actor.{ ActorRefFactory, Props }
 import akka.pattern.ask
 import akka.util.Timeout
+import java.util.UUID
+import java.net.URI
 
 class DefaultTemplateCache(
   actorFactory: ActorRefFactory,
@@ -27,11 +29,18 @@ class DefaultTemplateCache(
     (handler ? GetTutorial(id)).mapTo[TutorialResult].map(_.tutorial)
   def search(query: String): Future[Iterable[TemplateMetadata]] =
     (handler ? SearchTemplates(query)).mapTo[TemplateQueryResult].map(_.templates)
+  def searchByName(name: String): Future[Option[TemplateMetadata]] =
+    (handler ? SearchTemplateByName(name)).mapTo[TemplateQueryResult].map(_.templates.headOption)
   def metadata: Future[Iterable[TemplateMetadata]] =
     (handler ? ListTemplates).mapTo[TemplateQueryResult].map(_.templates)
   def featured: Future[Iterable[TemplateMetadata]] =
     (handler ? ListFeaturedTemplates).mapTo[TemplateQueryResult].map(_.templates)
+
+  override def close(): Unit = {
+    actorFactory.stop(handler)
+  }
 }
+
 object DefaultTemplateCache {
   /** Creates a default template cache for us. */
   def apply(actorFactory: ActorRefFactory,
@@ -62,5 +71,18 @@ object DefaultTemplateCache {
     def hasNewIndex(oldId: String): Boolean = false
     def resolveIndexTo(indexDirOrFile: File): String =
       sys.error("Offline mode! Cannot resolve new index.")
+
+    def templateBundleURI(activatorVersion: String,
+      uuid: UUID,
+      templateName: String): URI =
+      sys.error("Offline mode! can't get template bundle")
+
+    def templateBundleExists(activatorVersion: String,
+      uuid: UUID,
+      templateName: String): Boolean =
+      sys.error("Offline mode! can't get template bundle")
+
+    def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File =
+      sys.error("Offline mode! Can't get minimal activator dist")
   }
 }

@@ -24,7 +24,7 @@ case class Template(metadata: TemplateMetadata,
  * This interface represents the template cache within SNAP.  it's your mechanisms to find things and
  *  create stuff.
  */
-trait TemplateCache {
+trait TemplateCache extends java.io.Closeable {
   /** Find a template within the cache. */
   def template(id: String): Future[Option[Template]]
   /** Find the tutorial for a given template. */
@@ -32,8 +32,12 @@ trait TemplateCache {
   def tutorial(id: String): Future[Option[Tutorial]]
   /** Search for a template within the cache. */
   def search(query: String): Future[Iterable[TemplateMetadata]]
+  /** Find a template within the cache by exact name. */
+  def searchByName(name: String): Future[Option[TemplateMetadata]]
   /** Returns all metadata we have for templates. */
   def metadata: Future[Iterable[TemplateMetadata]]
   /** Returns all the metadata meant to be featured in the initial page. */
   def featured: Future[Iterable[TemplateMetadata]]
+
+  override def close(): Unit = {}
 }

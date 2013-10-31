@@ -43,6 +43,10 @@ object Layout {
     base / TEMPLATES_DIRECTORY_NAME
   def templateFile(base: URI, id: String): URI =
     templateDirectory(base) / (hashDirectories(id) + templateFile(id))
+  def templateBundle(base: URI, activatorVersion: String, id: String, templateName: String): URI =
+    templateDirectory(base) / (hashDirectories(id) + id + "/" + activatorVersion + "/" + templateName + ".zip")
+  def minimalActivatorDist(base: URI, activatorVersion: String): URI =
+    base / s"${activatorVersion}/typesafe-activator-${activatorVersion}-minimal.zip"
 }
 
 // Helper to pull down the layout all at once...
@@ -50,4 +54,8 @@ class Layout(base: URI) {
   val currentIndexTag = Layout.currentIndexTagUri(base)
   def template(id: String) = Layout.templateFile(base, id)
   def index(hash: String) = Layout.indexUri(base, hash)
+  def templateBundle(activatorVersion: String, id: String, templateName: String) =
+    Layout.templateBundle(base, activatorVersion, id, templateName)
+  def minimalActivatorDist(activatorVersion: String) =
+    Layout.minimalActivatorDist(base, activatorVersion)
 }

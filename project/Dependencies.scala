@@ -14,6 +14,8 @@ object Dependencies {
 
   val sbtIo = "org.scala-sbt" % "io" % sbtDependencyVersion
 
+  val commonsCompress = "org.apache.commons" % "commons-compress" % "1.4.1"
+
   val jgit = "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "2.2.0.201212191850-r"
 
   val akkaActor            = "com.typesafe.akka" % "akka-actor_2.10" % akkaVersion

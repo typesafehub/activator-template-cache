@@ -15,8 +15,12 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.auth.AnonymousAWSCredentials
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.Protocol
-import com.amazonaws.services.s3.model.GetObjectRequest
+import com.amazonaws.services.s3.model.{ GetObjectRequest, GetObjectMetadataRequest }
 import akka.event.LoggingAdapter
+import java.util.UUID
+import java.net.HttpURLConnection
+import com.amazonaws.AmazonClientException
+import com.amazonaws.AmazonServiceException
 
 /**
  *  This dude resolves files from a URI-based repo.  We use the sbt
@@ -28,10 +32,32 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
 
   // wrapper around IO.download that logs what's happening
   private def download(url: URL, dest: File): Unit = {
-    // FIXME this should be somehow conditional or use a logger or something
     log.debug(s"Downloading url ${url} underneath base ${base}")
     try IO.download(url, dest)
     catch {
+      case e: Exception =>
+        log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
+        throw RepositoryException(s"Failed to download ${url}", e)
+    }
+  }
+
+  private def exists(url: URL): Boolean = {
+    log.debug(s"Checking HEAD for url ${url} underneath base ${base}")
+    try {
+      url.openConnection() match {
+        case http: HttpURLConnection =>
+          http.setRequestMethod("HEAD")
+          http.getResponseCode() match {
+            case 200 =>
+              true
+            case whatever =>
+              log.debug(s"response code $whatever from HEAD on $url")
+              false
+          }
+        case whatever =>
+          throw new Exception("Got weird non-http connection " + whatever)
+      }
+    } catch {
       case e: Exception =>
         log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
         throw RepositoryException(s"Failed to download ${url}", e)
@@ -61,7 +87,54 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     client.getObject(request, dest)
   } catch {
     case e: Exception =>
-      throw RepositoryException(s"Failed to download ${url} form s3", e)
+      throw RepositoryException(s"Failed to download ${url} from s3", e)
+  }
+
+  protected def existsFromS3(url: URI): Boolean = try {
+    log.debug(s"Checking existence of ${url} underneath base ${base}")
+    val client = makeClient()
+
+    val (bucket, key) = getBucketAndKey(url)
+    val request = new GetObjectMetadataRequest(bucket, key)
+    client.getObjectMetadata(request)
+    true
+  } catch {
+    case e: AmazonServiceException =>
+      if (e.getStatusCode() == 404) {
+        log.debug(s"404 on S3 object ${url}: ${e.getStatusCode}: ${e.getErrorCode}: ${e.getMessage}")
+        false
+      } else {
+        throw RepositoryException(s"Failed to check existence of ${url} on s3: ${e.getMessage}", e)
+      }
+    case e: Exception =>
+      // Exception includes AmazonClientException which is an error before the
+      // http request even gets started (largely should not happen)
+      throw RepositoryException(s"Failed to check existence of ${url} on s3: ${e.getClass.getName}: ${e.getMessage}", e)
+  }
+
+  private def downloadTryingS3First(uri: URI, toFile: File): File = {
+    // TODO - Should we be going directly to s3 here?
+    // we are trying it to bypass CloudFront cache.
+    try downloadFromS3(uri, toFile)
+    catch {
+      // Our backup for local-file based testing...
+      case ex: RepositoryException =>
+        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
+        download(uri.toURL, toFile)
+    }
+    toFile
+  }
+
+  private def existsTryingS3First(uri: URI): Boolean = {
+    // TODO - Should we be going directly to s3 here?
+    // we are trying it to bypass CloudFront cache.
+    try existsFromS3(uri)
+    catch {
+      // Our backup for local-file based testing...
+      case ex: RepositoryException =>
+        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
+        exists(uri.toURL)
+    }
   }
 
   protected def getBucketAndKey(url: URI): (String, String) =
@@ -110,19 +183,23 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
       zipHash
     }
   }
+
   /**
-   * Downloads the current inex properties into
+   * Downloads the current index properties into
    */
-  def resolveIndexProperties(localPropsFile: File): File = {
-    // TODO - Should we be going directly to s3 here?
-    // we are trying it to bypass CloudFront cache.
-    try downloadFromS3(layout.currentIndexTag, localPropsFile)
-    catch {
-      // Our backup for local-file based testing...
-      case ex: RepositoryException =>
-        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
-        download(layout.currentIndexTag.toURL, localPropsFile)
-    }
-    localPropsFile
-  }
+  def resolveIndexProperties(localPropsFile: File): File =
+    downloadTryingS3First(layout.currentIndexTag, localPropsFile)
+
+  override def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File =
+    downloadTryingS3First(layout.minimalActivatorDist(activatorVersion), toFile)
+
+  override def templateBundleURI(activatorVersion: String,
+    uuid: UUID,
+    templateName: String): URI =
+    layout.templateBundle(activatorVersion, uuid.toString, templateName)
+
+  override def templateBundleExists(activatorVersion: String,
+    uuid: UUID,
+    templateName: String): Boolean =
+    existsTryingS3First(templateBundleURI(activatorVersion, uuid, templateName))
 }

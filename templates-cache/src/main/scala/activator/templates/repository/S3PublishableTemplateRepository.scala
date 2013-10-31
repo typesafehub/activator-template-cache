@@ -59,6 +59,18 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
       result <- publish(location, zipFile)
     } yield result
 
+  def publishTemplateBundle(
+    activatorVersion: String,
+    uuid: UUID,
+    templateName: String,
+    zipFile: java.io.File): ProcessResult[Unit] =
+    for {
+      location <- Validating.withMsg(s"Unable to publish template bundle: $templateName $uuid") {
+        layout.templateBundle(activatorVersion, uuid.toString, templateName)
+      }
+      result <- publish(location, zipFile)
+    } yield result
+
   def publishIndex(indexZip: java.io.File, serial: Long): ProcessResult[Unit] =
     for {
       hash <- hashFile(indexZip)
@@ -75,7 +87,7 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
   private def hashFile(file: java.io.File): ProcessResult[String] =
     Validating.withMsg(s"Failed to hash index file: $file") {
       val h = hashing hash file
-      log.info(s"index $file hashes to $h")
+      log.debug(s"index $file hashes to $h")
       h
     }
   private def download(uri: URI, file: java.io.File): ProcessResult[Unit] =
@@ -112,10 +124,10 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
     }
 
   private def publishUnsafe(dest: URI, src: java.io.File): Unit = {
-    log.info(s"publishing $src to $dest")
+    log.debug(s"publishing $src to $dest")
     val client = makeClient()
     val request = new PutObjectRequest(dest.getHost, cleanLocation(dest.getRawPath), src)
     client.putObject(request)
-    log.info(s"publishing $src to $dest - DONE")
+    log.debug(s"publishing $src to $dest - DONE")
   }
 }

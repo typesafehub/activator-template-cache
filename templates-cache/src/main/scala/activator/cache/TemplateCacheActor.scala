@@ -5,7 +5,7 @@ package activator
 package cache
 
 import java.io.File
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{ Actor, ActorLogging }
 import sbt.{ IO, PathFinder }
 import scala.util.control.NonFatal
 import akka.actor.Status
@@ -33,6 +33,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     case GetTemplate(id: String) => sender ! TemplateResult(getTemplate(id))
     case GetTutorial(id: String) => sender ! TutorialResult(getTutorial(id))
     case SearchTemplates(query, max) => sender ! TemplateQueryResult(searchTemplates(query, max))
+    case SearchTemplateByName(name) => sender ! TemplateQueryResult(searchTemplateByName(name))
     case ListTemplates => sender ! TemplateQueryResult(listTemplates)
     case ListFeaturedTemplates => sender ! TemplateQueryResult(listFeaturedTemplates)
   }
@@ -42,6 +43,9 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
 
   def searchTemplates(query: String, max: Int): Iterable[TemplateMetadata] =
     fillMetadata(index.search(query, max))
+
+  def searchTemplateByName(name: String): Iterable[TemplateMetadata] =
+    fillMetadata(index.templateByName(name))
 
   private def allFilesIn(dir: File): Seq[File] = (PathFinder(dir).*** --- PathFinder(dir)).get
   def getTutorial(id: String): Option[Tutorial] = {
@@ -146,6 +150,7 @@ object TemplateCacheActor {
   case class GetTemplate(id: String)
   case class GetTutorial(id: String)
   case class SearchTemplates(query: String, max: Int = 0)
+  case class SearchTemplateByName(name: String)
   case object ListTemplates
   case object ListFeaturedTemplates
 
