@@ -47,7 +47,7 @@ object Actions {
     tmp.replaceAll("\\\\+", "/")
   }
 
-  private def bestEffortFixApplicationSecret(basedir: java.io.File): Unit = {
+  def bestEffortFixApplicationSecret(basedir: java.io.File, replacement: Option[String] = None): Unit = {
     val charset = java.nio.charset.Charset.forName("UTF-8")
     // Here we use a heuristic that we know the directory in which  configuration is located
     // and that the name will be application.conf, *AND* the format of the config line is one
@@ -62,7 +62,8 @@ object Actions {
     // helper to replace the secret in a given file.
     def replaceSecret(file: File): Unit = {
       val contents = IO.read(file, charset)
-      val modified = contents.replaceFirst("(application.secret[ \t]*=[ \t]*)\"[^\"]+\"", "$1\"" + Matcher.quoteReplacement(makeNewApplicationSecret()) + "\"");
+      val replacementValue = replacement.getOrElse(makeNewApplicationSecret)
+      val modified = contents.replaceFirst("(application.secret[ \t]*=[ \t]*)\"[^\"]+\"", "$1\"" + Matcher.quoteReplacement(replacementValue) + "\"");
       if (modified != contents) {
         IO.write(file, modified, charset)
       }
