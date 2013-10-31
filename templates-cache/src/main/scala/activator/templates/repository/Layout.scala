@@ -46,7 +46,7 @@ object Layout {
   def templateBundle(base: URI, activatorVersion: String, id: String, templateName: String): URI =
     templateDirectory(base) / (hashDirectories(id) + id + "/" + activatorVersion + "/" + templateName + ".zip")
   def minimalActivatorDist(base: URI, activatorVersion: String): URI =
-    base / s"${activatorVersion}typesafe-activator-${activatorVersion}-minimal.zip"
+    base / s"${activatorVersion}/typesafe-activator-${activatorVersion}-minimal.zip"
 }
 
 // Helper to pull down the layout all at once...
