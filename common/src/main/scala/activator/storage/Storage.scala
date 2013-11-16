@@ -153,9 +153,11 @@ object HttpTextResult {
 trait StorageRestOps {
 
   // start a new template instance, pulling from source, with a caller-provided UUID
-  // this instance will be owned by the source URI (so can only be republished from there,
-  // with no other auth)
-  def createTemplateInstance(source: URI)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[UUID]
+  // If creator is None, this instance will be owned by the source URI
+  // (so can only be republished from there, with no other auth).
+  // If creator is Some(something) then the creator can publish the template name
+  // from any source, plus the original source can be republished by anyone.
+  def createTemplateInstance(source: URI, creator: Option[AccountInfo] = None)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[UUID]
 
   // query instances that need to be downloaded, validated, bundled, S3-uploaded;
   // invoked by the batch job to see what needs doing
@@ -172,6 +174,10 @@ trait StorageRestOps {
 
   // used to generate admin page on website; returns the templates belonging to the account
   def templatesForAccount(account: AccountInfo)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Seq[String]]
+
+  def accountsForTemplate(name: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Seq[AccountInfo]]
+  def addAccountForTemplate(name: String, account: AccountInfo)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
+  def removeAccountForTemplate(name: String, account: AccountInfo)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
 
   def findRepublishCookie(name: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Option[String]]
 
