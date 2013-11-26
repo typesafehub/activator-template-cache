@@ -10,8 +10,12 @@ import scala.concurrent.ExecutionContext
 import activator.cache.AuthorDefinedTemplateMetadata
 import activator.cache.IndexStoredTemplateMetadata
 import activator.ProcessResult
-
 import KeyValueMapper.HasGetAs
+import java.util.TimeZone
+import java.util.GregorianCalendar
+import java.util.Calendar
+import activator.ProcessFailure
+import activator.Validating
 
 // if it exists implicitly we have authenticated (server side)
 // or provided the secret key (client side)
@@ -147,6 +151,48 @@ object HttpTextResult {
   def internalServerError(text: String) = HttpTextResult(code = 500, text = text)
 }
 
+case class Day(year: Int, month: Int, day: Int) {
+  require(month > 0)
+  require(month < 13)
+  require(day > 0)
+  require(day < 32)
+
+  override def toString(): String = f"${year}%04d${month}%02d${day}%02d"
+}
+
+object Day {
+  private final val utc = TimeZone.getTimeZone("UTC")
+
+  def apply(value: String): Day = {
+    parse(value).fold(identity,
+      { errors =>
+        throw new RuntimeException(errors.map(e => e.msg).mkString)
+      })
+  }
+
+  def today(): Day = {
+    // is this too expensive? no idea
+    val now = new GregorianCalendar(utc)
+    Day(now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
+  }
+
+  def parse(value: String): ProcessResult[Day] = {
+    if (value.length != "yyyymmdd".length) {
+      ProcessFailure("day not in yyyymmdd format")
+    } else {
+      Validating.withMsg(s"Invalid day value '$value'") {
+        val year = Integer.parseInt(value.substring(0, 4))
+        val month = Integer.parseInt(value.substring(4, 6))
+        val day = Integer.parseInt(value.substring(6, 8))
+        Day(year, month, day)
+      }
+    }
+  }
+}
+
+// Long rather than Int used for stats due to our OPTIMISM
+case class TemplateStats(name: String, clones: Long)
+
 // this class has operations on the key-value store which
 // are also exported via the REST API.
 // So it keeps the backend in sync with the REST client.
@@ -213,6 +259,10 @@ trait StorageRestOps {
 
   // get the last checkin time for a worker (currentTimeMillis)
   def lastWorkerCheckin(worker: String)(implicit ec: ExecutionContext): Future[Long]
+
+  def recordTemplateCloned(name: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
+
+  def templateStatsForDay(day: Day)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Seq[TemplateStats]]
 }
 
 object StorageRestOps {
