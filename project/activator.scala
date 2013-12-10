@@ -61,7 +61,7 @@ object ActivatorBuild {
       makeFixWhitespace(Compile),
       makeFixWhitespace(Test),
       compileInputs in (Compile, compile) <<= (compileInputs in (Compile, compile)) dependsOn (fixWhitespace in Compile),
-      compileInputs in Test <<= (compileInputs in Test) dependsOn (fixWhitespace in Test)
+      compileInputs in (Test, compile) <<= (compileInputs in (Test, compile)) dependsOn (fixWhitespace in Test)
     )
 
   def ActivatorProject(name: String): Project = (
