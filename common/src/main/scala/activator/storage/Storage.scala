@@ -69,6 +69,10 @@ object InstanceValidatedWithOptionalName {
       Some(InstanceValidatedWithOptionalName(UUID.fromString(key), m.getAs[String]("name")))
     }
   }
+
+  implicit object InstanceValidatedWithOptionalNameKeyExtractor extends KeyExtractor[InstanceValidatedWithOptionalName] {
+    override def getKey(t: InstanceValidatedWithOptionalName): String = t.uuid.toString
+  }
 }
 
 object InstanceStatus {
