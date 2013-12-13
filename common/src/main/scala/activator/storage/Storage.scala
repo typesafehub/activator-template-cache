@@ -53,6 +53,11 @@ case class InstanceFailed(uuid: UUID, errors: Seq[String]) extends InstanceStatu
   def detail = "This template failed to publish. Please try again (after correcting any issues)."
   def discriminator = "failed"
 }
+// this is a legacy value in the database or API without a name stored
+case class InstanceValidatedWithOptionalName(uuid: UUID, nameOption: Option[String]) {
+  def withFallbackName(fallback: => String): InstanceValidated =
+    InstanceValidated(uuid, nameOption.getOrElse(fallback))
+}
 
 object InstanceStatus {
   // map an object that's always empty for now (i.e. the table is just a set of keys)
@@ -73,6 +78,16 @@ object InstanceStatus {
       for {
         name <- m.getAs[String]("name")
       } yield InstanceValidated(UUID.fromString(key), name = name)
+    }
+  }
+
+  implicit object InstanceValidatedWithOptionalNameKeyValueMapper extends KeyValueMapper[InstanceValidatedWithOptionalName] {
+    override def toMap(t: InstanceValidatedWithOptionalName): Map[String, Any] = {
+      t.nameOption map { name => Map("name" -> name) } getOrElse Map.empty
+    }
+
+    override def fromMap(key: String, m: Map[String, Any]): Option[InstanceValidatedWithOptionalName] = {
+      Some(InstanceValidatedWithOptionalName(UUID.fromString(key), m.getAs[String]("name")))
     }
   }
 
