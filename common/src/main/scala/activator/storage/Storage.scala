@@ -59,6 +59,18 @@ case class InstanceValidatedWithOptionalName(uuid: UUID, nameOption: Option[Stri
     InstanceValidated(uuid, nameOption.getOrElse(fallback))
 }
 
+object InstanceValidatedWithOptionalName {
+  implicit object InstanceValidatedWithOptionalNameKeyValueMapper extends KeyValueMapper[InstanceValidatedWithOptionalName] {
+    override def toMap(t: InstanceValidatedWithOptionalName): Map[String, Any] = {
+      t.nameOption map { name => Map("name" -> name) } getOrElse Map.empty
+    }
+
+    override def fromMap(key: String, m: Map[String, Any]): Option[InstanceValidatedWithOptionalName] = {
+      Some(InstanceValidatedWithOptionalName(UUID.fromString(key), m.getAs[String]("name")))
+    }
+  }
+}
+
 object InstanceStatus {
   // map an object that's always empty for now (i.e. the table is just a set of keys)
   // we do this to keep the option to add stuff to the value later, and to avoid
@@ -78,16 +90,6 @@ object InstanceStatus {
       for {
         name <- m.getAs[String]("name")
       } yield InstanceValidated(UUID.fromString(key), name = name)
-    }
-  }
-
-  implicit object InstanceValidatedWithOptionalNameKeyValueMapper extends KeyValueMapper[InstanceValidatedWithOptionalName] {
-    override def toMap(t: InstanceValidatedWithOptionalName): Map[String, Any] = {
-      t.nameOption map { name => Map("name" -> name) } getOrElse Map.empty
-    }
-
-    override def fromMap(key: String, m: Map[String, Any]): Option[InstanceValidatedWithOptionalName] = {
-      Some(InstanceValidatedWithOptionalName(UUID.fromString(key), m.getAs[String]("name")))
     }
   }
 
