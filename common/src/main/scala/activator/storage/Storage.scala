@@ -45,13 +45,34 @@ case class InstancePending(uuid: UUID, serial: Long) extends InstanceStatus {
   def detail = "This template is being processed."
   def discriminator = "pending"
 }
-case class InstanceValidated(uuid: UUID) extends InstanceStatus {
-  def detail = "This template was published successfully! (It may take some time to show up on the site.)"
+case class InstanceValidated(uuid: UUID, name: String) extends InstanceStatus {
+  def detail = s"This template was published successfully! (It may take some time to show up on the site.)"
   def discriminator = "validated"
 }
 case class InstanceFailed(uuid: UUID, errors: Seq[String]) extends InstanceStatus {
   def detail = "This template failed to publish. Please try again (after correcting any issues)."
   def discriminator = "failed"
+}
+// this is a legacy value in the database or API without a name stored
+case class InstanceValidatedWithOptionalName(uuid: UUID, nameOption: Option[String]) {
+  def withFallbackName(fallback: => String): InstanceValidated =
+    InstanceValidated(uuid, nameOption.getOrElse(fallback))
+}
+
+object InstanceValidatedWithOptionalName {
+  implicit object InstanceValidatedWithOptionalNameKeyValueMapper extends KeyValueMapper[InstanceValidatedWithOptionalName] {
+    override def toMap(t: InstanceValidatedWithOptionalName): Map[String, Any] = {
+      t.nameOption map { name => Map("name" -> name) } getOrElse Map.empty
+    }
+
+    override def fromMap(key: String, m: Map[String, Any]): Option[InstanceValidatedWithOptionalName] = {
+      Some(InstanceValidatedWithOptionalName(UUID.fromString(key), m.getAs[String]("name")))
+    }
+  }
+
+  implicit object InstanceValidatedWithOptionalNameKeyExtractor extends KeyExtractor[InstanceValidatedWithOptionalName] {
+    override def getKey(t: InstanceValidatedWithOptionalName): String = t.uuid.toString
+  }
 }
 
 object InstanceStatus {
@@ -64,8 +85,16 @@ object InstanceStatus {
     override def fromMap(key: String, m: Map[String, Any]): Option[T] = Some(fromKey(key))
   }
 
-  implicit object InstanceValidatedKeyValueMapper extends EmptyMapper[InstanceValidated] {
-    override def fromKey(key: String) = InstanceValidated(UUID.fromString(key))
+  implicit object InstanceValidatedKeyValueMapper extends KeyValueMapper[InstanceValidated] {
+    override def toMap(t: InstanceValidated): Map[String, Any] = {
+      Map("name" -> t.name)
+    }
+
+    override def fromMap(key: String, m: Map[String, Any]): Option[InstanceValidated] = {
+      for {
+        name <- m.getAs[String]("name")
+      } yield InstanceValidated(UUID.fromString(key), name = name)
+    }
   }
 
   implicit object InstancePendingKeyValueMapper extends KeyValueMapper[InstancePending] {
