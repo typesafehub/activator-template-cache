@@ -6,11 +6,13 @@ package templates
 package repository
 
 import cache._
-import java.io.File
+import java.io.{ IOException, File }
 import sbt.{ IO, PathFinder }
 
 import org.junit._
 import Assert._
+import java.net.URI
+import java.util.UUID
 
 class TestUriRemoteTemplateRepository {
   // Helper to make a dummy zip file.
@@ -151,4 +153,26 @@ class TestUriRemoteTemplateRepository {
         remote.hasNewIndex("RANDOM-INDEX"))
     }
   }
+
+  @Test
+  def shouldWorkWithProductionRepo(): Unit = {
+    val productionUri = new URI("http://downloads.typesafe.com/typesafe-activator")
+
+    val repo = new UriRemoteTemplateRepository(productionUri, akka.event.NoLogging)
+
+    val hasNewIndex = repo.hasNewIndex("RANDOM-INDEX")
+
+    val online = try {
+      val connection = productionUri.toURL.openConnection()
+      connection.setConnectTimeout(5000)
+      connection.connect()
+      true
+    } catch {
+      case _: IOException => false
+    }
+
+    // if we are online then we should have a new index otherwise not
+    assert(hasNewIndex == online)
+  }
+
 }

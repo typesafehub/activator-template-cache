@@ -33,6 +33,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
   // wrapper around IO.download that logs what's happening
   private def download(url: URL, dest: File): Unit = {
     log.debug(s"Downloading url ${url} underneath base ${base}")
+    // todo: lower timeout on this
     try IO.download(url, dest)
     catch {
       case e: Exception =>
@@ -64,13 +65,29 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     }
   }
 
-  protected def makeClient(): AmazonS3Client = try {
+  protected def makeProxyableClientConfiguration(): ClientConfiguration = {
+    val config = new ClientConfiguration().withProtocol(Protocol.HTTPS)
+    // Check if we need a proxy
+    def doIf(prop: String)(f: String => Unit): Unit = {
+      sys.props.get(prop).foreach(f)
+    }
+    // TODO - According to spec, https + http proxies can be different for java.
+    //   Are our users using different ones?
+    doIf("http.proxyHost")(config.setProxyHost)
+    doIf("http.proxyPort")(portString => config.setProxyPort(portString.toInt))
+    doIf("http.proxyUser")(config.setProxyUsername)
+    doIf("http.proxyPassword")(config.setProxyPassword)
+
+    // Set a low timeout on this thing of 5 seconds
+    config.setConnectionTimeout(5000)
+
+    config
+  }
+
+  protected def makeClient(): AmazonS3Client = {
     new AmazonS3Client(
       new AnonymousAWSCredentials(),
-      new ClientConfiguration().withProtocol(Protocol.HTTPS))
-  } catch {
-    case t: Exception =>
-      throw RepositoryException(s"Failed to start Amazon s3 client!", t)
+      makeProxyableClientConfiguration())
   }
 
   private def cleanLocation(path: String): String =
