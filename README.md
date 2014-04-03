@@ -6,7 +6,7 @@ This project contains the library/cache code to be able to consume and create Ac
 
 # How to build
 
-This project uses [SBT 0.12](http://scala-sbt.org).   Make sure you have an SBT launcher, and run it in the checked out directory.
+This project uses [SBT 0.13](http://scala-sbt.org).   Make sure you have an SBT launcher, and run it in the checked out directory.
 
 
 ## Unit Tests
