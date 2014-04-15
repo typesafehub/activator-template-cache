@@ -219,4 +219,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     uuid: UUID,
     templateName: String): Boolean =
     existsTryingS3First(templateBundleURI(activatorVersion, uuid, templateName))
+
+  override def templateZipURI(uuid: UUID): URI =
+    layout.template(uuid.toString)
 }
