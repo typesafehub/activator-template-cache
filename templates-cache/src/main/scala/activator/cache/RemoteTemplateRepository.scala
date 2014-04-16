@@ -46,6 +46,13 @@ trait RemoteTemplateRepository {
     templateName: String): URI
 
   /**
+   * Calculates the URI where we would find or publish the main
+   * template zip ... normally you want to use this via the cache,
+   * not directly, though.
+   */
+  def templateZipURI(uuid: UUID): URI
+
+  /**
    * Checks whether the bundled version of the template exists.
    */
   def templateBundleExists(activatorVersion: String,
