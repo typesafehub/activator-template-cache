@@ -14,8 +14,12 @@ object ZipHelper {
   case class FileMapping(file: File, name: String, unixMode: Option[Int] = None)
 
   // scala has no octal literals anymore so we do this weird thing
-  val executablePerms = Integer.parseInt("755", 8)
-  val notExecutablePerms = Integer.parseInt("644", 8)
+  // If you don't include the file type here (1 = reg, 4 = dir) then
+  // unzipping on OS X using the GUI will drop the execute bits.
+  // command line unzip on linux or OS X is fine.
+  val executablePermsRegularFile = Integer.parseInt("100755", 8)
+  val searchablePermsDirectory = Integer.parseInt("400755", 8)
+  val notExecutablePermsRegularFile = Integer.parseInt("100644", 8)
 
   /**
    * Creates a zip file attempting to give files the appropriate unix permissions using Java 6 APIs.
@@ -27,7 +31,9 @@ object ZipHelper {
       for {
         (file, name) <- sources.toSeq
         // TODO - Figure out if this is good enough....
-        perm = if (file.isDirectory || file.canExecute) executablePerms else notExecutablePerms
+        perm = if (file.isDirectory) searchablePermsDirectory
+        else if (file.canExecute) executablePermsRegularFile
+        else notExecutablePermsRegularFile
       } yield FileMapping(file, name, Some(perm))
     archive(mappings, outputZip)
   }
