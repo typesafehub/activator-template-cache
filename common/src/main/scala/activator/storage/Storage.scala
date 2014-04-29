@@ -283,6 +283,8 @@ trait StorageRestOps {
 
   def setIndexed(name: String, indexed: Boolean)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
 
+  def setCategory(name: String, category: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
+
   // check-in from a worker (notifies that worker is alive)
   def workerCheckin(worker: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
 
