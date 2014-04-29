@@ -217,6 +217,7 @@ object TemplateMetadata {
     val INDIVIDUAL = "individual"
     val TYPESAFE = "typesafe"
     val PARTNER = "partner"
+    val all = Seq(UNKNOWN, COMPANY, INDIVIDUAL, TYPESAFE, PARTNER)
   }
 
   // creation time we use for templates when we didn't record
