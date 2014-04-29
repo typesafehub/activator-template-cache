@@ -33,11 +33,19 @@ case class AuthorDefinedTemplateMetadata(
       s.trim().replace("\r\n", "\n").replace("\r", "\n")
   }
 
+  private def cleanupTwitter(s: String): String = {
+    val trimmed = cleanup(s)
+    if (trimmed.startsWith("@"))
+      trimmed.substring(1)
+    else
+      trimmed
+  }
+
   def cleanup(): AuthorDefinedTemplateMetadata = {
     copy(name = cleanup(name), title = cleanup(title), description = cleanup(description),
       authorName = authorName.map(cleanup(_)), authorLink = authorLink.map(cleanup(_)),
       authorLogo = authorLogo.map(cleanup(_)), authorBio = authorBio.map(cleanup(_)),
-      authorTwitter = authorTwitter.map(cleanup(_)),
+      authorTwitter = authorTwitter.map(cleanupTwitter(_)),
       tags = tags.map(cleanup(_)), sourceLink = sourceLink.map(cleanup(_)))
   }
 

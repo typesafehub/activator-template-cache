@@ -26,7 +26,7 @@ class MetadataTest {
       sourceLink = cleaned.sourceLink.map(" " + _),
       authorLogo = cleaned.authorLogo.map(" " + _ + " "),
       authorBio = cleaned.authorBio.map(" " + _ + " "),
-      authorTwitter = cleaned.authorTwitter.map(" " + _))
+      authorTwitter = cleaned.authorTwitter.map(" @" + _))
     assertEquals(cleaned, dirty.cleanup())
   }
 
