@@ -18,6 +18,9 @@ case class AuthorDefinedTemplateMetadata(
   description: String, // A long-winded description about what this template does.
   authorName: Option[String], // author's name
   authorLink: Option[String], // link to go to when clicking on author's name
+  authorLogo: Option[String], // logo URI for author
+  authorBio: Option[String], // some text describing the author
+  authorTwitter: Option[String], // author twitter handle
   tags: Seq[String], // A set of folksonomy tags describing what's in this template, used for searching.
   templateTemplate: Boolean, // this template is for making another template, so props/tutorial should be cloned
   sourceLink: Option[String]) {
@@ -33,6 +36,8 @@ case class AuthorDefinedTemplateMetadata(
   def cleanup(): AuthorDefinedTemplateMetadata = {
     copy(name = cleanup(name), title = cleanup(title), description = cleanup(description),
       authorName = authorName.map(cleanup(_)), authorLink = authorLink.map(cleanup(_)),
+      authorLogo = authorLogo.map(cleanup(_)), authorBio = authorBio.map(cleanup(_)),
+      authorTwitter = authorTwitter.map(cleanup(_)),
       tags = tags.map(cleanup(_)), sourceLink = sourceLink.map(cleanup(_)))
   }
 
@@ -109,6 +114,9 @@ case class AuthorDefinedTemplateMetadata(
     val errors = nameCheck(name, "name") ++ oneLineCheck(title, "title") ++
       paragraphCheck(description, "description") ++ authorLink.map(linkCheck(_, "authorLink")).getOrElse(Nil) ++
       authorName.map(oneLineCheck(_, "authorName")).getOrElse(Nil) ++
+      authorLogo.map(linkCheck(_, "authorLogo")).getOrElse(Nil) ++
+      authorBio.map(paragraphCheck(_, "authorBio")).getOrElse(Nil) ++
+      authorTwitter.map(oneLineCheck(_, "authorTwitter")).getOrElse(Nil) ++
       tags.flatMap(tagCheck(_, "tags")) ++ noneEmpty(tags, "tags") ++
       sourceLink.map(linkCheck(_, "sourceLink")).getOrElse(Nil)
 
@@ -134,27 +142,35 @@ case class IndexStoredTemplateMetadata(
   description: String, // A long-winded description about what this template does.
   authorName: String, // author's name
   authorLink: String, // link to go to when clicking on author's name
+  authorLogo: Option[String], // author's logo URI
+  authorBio: Option[String], // long description of author
+  authorTwitter: Option[String], // twitter handle of author
   tags: Seq[String], // A set of folksonomy tags describing what's in this template, used for searching.
-  timeStamp: Long,
+  timeStamp: Long, // last publish time in SECONDS
+  creationTime: Long, // earliest publish time in SECONDS
   featured: Boolean, // Display on the home page.
   usageCount: Option[Long], // Usage counts pulled from website.
   templateTemplate: Boolean, // is it a meta-template for making templates
-  sourceLink: String // link to the source code online
-  ) {
+  sourceLink: String, // link to the source code online
+  category: String) {
 
 }
 
 object IndexStoredTemplateMetadata {
   // calling this method 'apply' mangles Json.writes/Json.reads due to a Play bug
   // (it's kind of a lame method anyway, we might want to get rid of it)
-  def fromAuthorDefined(id: String, userConfig: AuthorDefinedTemplateMetadata, timeStamp: Long,
+  def fromAuthorDefined(id: String, userConfig: AuthorDefinedTemplateMetadata, timeStamp: Long, creationTime: Long,
     featured: Boolean, usageCount: Option[Long], fallbackAuthorName: String, fallbackAuthorLink: String,
-    fallbackSourceLink: String): IndexStoredTemplateMetadata = {
+    fallbackSourceLink: String, category: String): IndexStoredTemplateMetadata = {
     IndexStoredTemplateMetadata(id = id, name = userConfig.name, title = userConfig.title, description = userConfig.description,
       authorName = userConfig.authorName.getOrElse(fallbackAuthorName),
       authorLink = userConfig.authorLink.getOrElse(fallbackAuthorLink),
-      tags = userConfig.tags, timeStamp = timeStamp, featured = featured, usageCount = usageCount,
-      templateTemplate = userConfig.templateTemplate, sourceLink = userConfig.sourceLink.getOrElse(fallbackSourceLink))
+      authorLogo = userConfig.authorLogo, authorBio = userConfig.authorBio,
+      authorTwitter = userConfig.authorTwitter,
+      tags = userConfig.tags, timeStamp = timeStamp, creationTime = creationTime,
+      featured = featured, usageCount = usageCount,
+      templateTemplate = userConfig.templateTemplate, sourceLink = userConfig.sourceLink.getOrElse(fallbackSourceLink),
+      category = category)
   }
 }
 
@@ -176,6 +192,21 @@ case class TemplateMetadata(
   def usageCount = persistentConfig.usageCount
   def templateTemplate = persistentConfig.templateTemplate
   def sourceLink = persistentConfig.sourceLink
+}
+
+object TemplateMetadata {
+  object Category {
+    val UNKNOWN = "unknown"
+    val COMPANY = "company"
+    val INDIVIDUAL = "individual"
+    val TYPESAFE = "typesafe"
+    val PARTNER = "partner"
+  }
+
+  // creation time we use for templates when we didn't record
+  // a creation time. This is April 29th 2014 which is when we added
+  // creation time.
+  val LEGACY_CREATION_TIME = 1398787148L
 }
 
 // things that we can do to an index via the REST API,

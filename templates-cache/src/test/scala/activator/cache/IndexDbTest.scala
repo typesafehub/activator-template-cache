@@ -66,12 +66,17 @@ trait IndexDbTest {
       description = "A very long description; DELETE TABLE TEMPLATES; with SQL injection.",
       authorName = "Jim Bob",
       authorLink = "http://example.com/jimbob/",
-      Seq("Tag 1", "Tag 2", "tag3"),
+      tags = Seq("Tag 1", "Tag 2", "tag3"),
       timeStamp = 1L,
       featured = true,
       usageCount = None,
       templateTemplate = true,
-      sourceLink = "http://example.com/source"),
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
       IndexStoredTemplateMetadata(
         id = "ID-2",
         name = "url-friendly-name-2",
@@ -84,7 +89,12 @@ trait IndexDbTest {
         featured = false,
         usageCount = None,
         templateTemplate = false,
-        sourceLink = "http://example.com/source"))
+        sourceLink = "http://example.com/source",
+        authorLogo = Some("http://example.com/logo.png"),
+        authorBio = Some("Blah blah blah blah"),
+        authorTwitter = Some("blah"),
+        category = TemplateMetadata.Category.COMPANY,
+        creationTime = TemplateMetadata.LEGACY_CREATION_TIME))
 
   @Before
   def preStart(): Unit = {
