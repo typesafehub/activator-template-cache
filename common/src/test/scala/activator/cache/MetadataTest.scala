@@ -102,4 +102,48 @@ class MetadataTest {
       assertTrue("it was an url-invalid error", errors.head.contains("URL"))
     }
   }
+
+  @Test
+  def validateBadTwitter(): Unit = {
+    val base = AuthorDefinedTemplateMetadata(name = "foo", title = "bar", description = "baz\nblah",
+      authorName = Some("blah"), authorLink = Some("http://example.com/"),
+      authorLogo = Some("http://example.com/bar"), authorBio = Some("blah blah"),
+      authorTwitter = Some("tweets"),
+      tags = Seq("a", "b"), templateTemplate = false,
+      sourceLink = Some("http://example.com/source/"))
+    assertEquals("base is valid", ProcessSuccess(base), base.validate())
+
+    for (c <- Seq('/', ' ', '%')) {
+      val invalid = base.copy(authorTwitter = base.authorTwitter.map(_ + c))
+      val errors = invalid.validate() match {
+        case ProcessFailure(errors) => errors.map(_.msg)
+        case whatever =>
+          throw new AssertionError(s"expecting failure got $whatever")
+      }
+      assertTrue("got an error on invalid twitter", errors.nonEmpty)
+      assertTrue("it was an invalid-chars error", errors.head.contains("underscore"))
+    }
+  }
+
+  @Test
+  def validateTwitterTooLong(): Unit = {
+    val base = AuthorDefinedTemplateMetadata(name = "foo", title = "bar", description = "baz\nblah",
+      authorName = Some("blah"), authorLink = Some("http://example.com/"),
+      authorLogo = Some("http://example.com/bar"), authorBio = Some("blah blah"),
+      authorTwitter = Some("twitters"),
+      tags = Seq("a", "b"), templateTemplate = false,
+      sourceLink = Some("http://example.com/source/"))
+    assertEquals("base is valid", ProcessSuccess(base), base.validate())
+
+    val invalid = base.copy(authorTwitter = Some("mytwitterhandleistoooooloooong"))
+    val errors = invalid.validate() match {
+      case ProcessFailure(errors) => errors.map(_.msg)
+      case whatever =>
+        throw new AssertionError(s"expecting failure got $whatever")
+    }
+    assertTrue("got an error on invalid twitter", errors.nonEmpty)
+    assertTrue("it was a twitter-related error", errors.head.contains("authorTwitter"))
+    assertTrue("it was a too-long error", errors.head.contains("too long"))
+  }
+
 }

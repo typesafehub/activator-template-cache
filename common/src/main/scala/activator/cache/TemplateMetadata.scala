@@ -94,6 +94,13 @@ case class AuthorDefinedTemplateMetadata(
       else
         Nil
     }
+    def validTwitter(s: String, fieldName: String): Seq[String] = {
+      val valid = s.filter(c => Character.isLetterOrDigit(c) || c == '_')
+      if (valid != s)
+        Seq(s"$fieldName must contain a twitter username with only letters, digits, and underscore (found '$s')")
+      else
+        Nil
+    }
     def validUrlFriendly(s: String, fieldName: String): Seq[String] = {
       val escaped = URLEncoder.encode(s, "UTF-8")
       if (escaped != s)
@@ -118,13 +125,14 @@ case class AuthorDefinedTemplateMetadata(
     val linkCheck = make(paragraphCheck, validLink)
     val tagCheck = make(notTooLong(_, _, 50), validTag)
     val nameCheck = make(oneLineCheck, validUrlFriendly)
+    val twitterCheck = make(nonEmpty, noControlChars, notTooLong(_, _, 15), validTwitter)
 
     val errors = nameCheck(name, "name") ++ oneLineCheck(title, "title") ++
       paragraphCheck(description, "description") ++ authorLink.map(linkCheck(_, "authorLink")).getOrElse(Nil) ++
       authorName.map(oneLineCheck(_, "authorName")).getOrElse(Nil) ++
       authorLogo.map(linkCheck(_, "authorLogo")).getOrElse(Nil) ++
       authorBio.map(paragraphCheck(_, "authorBio")).getOrElse(Nil) ++
-      authorTwitter.map(oneLineCheck(_, "authorTwitter")).getOrElse(Nil) ++
+      authorTwitter.map(twitterCheck(_, "authorTwitter")).getOrElse(Nil) ++
       tags.flatMap(tagCheck(_, "tags")) ++ noneEmpty(tags, "tags") ++
       sourceLink.map(linkCheck(_, "sourceLink")).getOrElse(Nil)
 
