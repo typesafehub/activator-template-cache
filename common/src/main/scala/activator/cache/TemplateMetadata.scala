@@ -67,7 +67,7 @@ case class AuthorDefinedTemplateMetadata(
         Seq(s"$fieldName contains invalid control characters")
     }
     def notTooLong(s: String, fieldName: String, limit: Int): Seq[String] = {
-      if (s.length() < limit)
+      if (s.length() <= limit)
         Nil
       else
         Seq(s"$fieldName is too long (limit $limit chars, ${s.length - limit} over the limit)")
