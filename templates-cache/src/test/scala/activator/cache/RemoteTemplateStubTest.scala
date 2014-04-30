@@ -189,7 +189,12 @@ class RemoteTemplateStubTest {
       authorLink = "http://example.com/jimbob/",
       tags = Seq("test", "template"),
       templateTemplate = false,
-      sourceLink = "http://example.com/source"),
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = true)
 
   val nonLocalTemplate = TemplateMetadata(
@@ -205,7 +210,12 @@ class RemoteTemplateStubTest {
       authorLink = "http://example.com/jimbob/",
       tags = Seq("test", "template"),
       templateTemplate = true,
-      sourceLink = "http://example.com/source"),
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
 
   val resolvedNonLocalTemplate =
@@ -224,7 +234,12 @@ class RemoteTemplateStubTest {
       authorLink = "http://example.com/jimbob/",
       tags = Seq("test", "template"),
       templateTemplate = false,
-      sourceLink = "http://example.com/source"),
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
 
   val resolvedNewNonLocalTemplate =

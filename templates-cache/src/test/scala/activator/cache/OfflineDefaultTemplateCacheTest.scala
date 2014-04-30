@@ -57,7 +57,12 @@ class OfflineDefaultTemplateCacheTest {
       authorLink = "http://example.com/bob",
       tags = Seq("test", "template"),
       templateTemplate = true,
-      sourceLink = "http://example.com/source"),
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = true)
 
   val nonLocalTemplate = TemplateMetadata(
@@ -73,7 +78,12 @@ class OfflineDefaultTemplateCacheTest {
       authorLink = "http://example.com/jim",
       tags = Seq("test", "template"),
       templateTemplate = true,
-      sourceLink = "http://example.com/source"),
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
   def makeTestCache(dir: File): Unit = {
     val writer = LuceneIndexProvider.write(new File(dir, Constants.METADATA_INDEX_FILENAME))

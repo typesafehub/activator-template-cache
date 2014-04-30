@@ -61,13 +61,18 @@ object LuceneIndex {
   val FIELD_TITLE = "title"
   val FIELD_DESC = "description"
   val FIELD_TS = "timestamp"
+  val FIELD_CREATION_TIME = "creationTime"
   val FIELD_TAGS = "tags"
   val FIELD_FEATURED = "featured"
   val FIELD_USAGE_COUNT = "usageCount"
   val FIELD_AUTHOR_NAME = "authorName"
   val FIELD_AUTHOR_LINK = "authorLink"
+  val FIELD_AUTHOR_LOGO = "authorLogo"
+  val FIELD_AUTHOR_BIO = "authorBio"
+  val FIELD_AUTHOR_TWITTER = "authorTwitter"
   val FIELD_TEMPLATE_TEMPLATE = "templateTemplate"
   val FIELD_SOURCE_LINK = "sourceLink"
+  val FIELD_CATEGORY = "category"
 
   val FIELD_TRUE_VALUE = "true"
   val FIELD_FALSE_VALUE = "false"
@@ -85,9 +90,13 @@ object LuceneIndex {
     // We need to figure out how to throw an error and what to do about it...
     // For now, let's just throw any old error and deal on the Actor-side of the fence.
     val ts = (doc get FIELD_TS).toLong
+    val creationTime = Option(doc get FIELD_CREATION_TIME).map(_.toLong).getOrElse(TemplateMetadata.LEGACY_CREATION_TIME)
     val desc = doc get FIELD_DESC
     val authorName = doc get FIELD_AUTHOR_NAME
     val authorLink = doc get FIELD_AUTHOR_LINK
+    val authorLogo = Option(doc get FIELD_AUTHOR_LOGO)
+    val authorBio = Option(doc get FIELD_AUTHOR_BIO)
+    val authorTwitter = Option(doc get FIELD_AUTHOR_TWITTER)
     val tags = (doc get FIELD_TAGS) split ","
     val usageCount = (doc get FIELD_USAGE_COUNT) match {
       case FIELD_NONE_VALUE => None
@@ -98,6 +107,7 @@ object LuceneIndex {
     val templateTemplate = (doc get FIELD_TEMPLATE_TEMPLATE) == FIELD_TRUE_VALUE
     // sourceLink may not be present in old indexes
     val sourceLink = Option(doc get FIELD_SOURCE_LINK)
+    val category = Option(doc get FIELD_CATEGORY).getOrElse(TemplateMetadata.Category.UNKNOWN)
 
     //val
     IndexStoredTemplateMetadata(
@@ -107,22 +117,31 @@ object LuceneIndex {
       description = desc,
       authorName = authorName,
       authorLink = authorLink,
+      authorLogo = authorLogo,
+      authorBio = authorBio,
+      authorTwitter = authorTwitter,
       tags = tags,
       timeStamp = ts,
+      creationTime = creationTime,
       featured = featured,
       usageCount = usageCount,
       templateTemplate = templateTemplate,
       // this getOrElse is just to deal with old records without exploding;
       // newly-published templates will always have the source link
-      sourceLink = sourceLink.getOrElse("http://typesafe.com/"))
+      sourceLink = sourceLink.getOrElse("http://typesafe.com/"),
+      category = category)
   }
 
   def metadataToDocument(metadata: IndexStoredTemplateMetadata): Document = {
     val doc = new Document()
+    // "StringField" is indexed as just a literal ID (not tokenized), while "TextField"
+    // is broken up into tokens like prose text for search purposes. That's my
+    // understanding anyway.
     doc.add(new StringField(FIELD_ID, metadata.id, Field.Store.YES))
     doc.add(new TextField(FIELD_NAME, metadata.name, Field.Store.YES))
     doc.add(new TextField(FIELD_TITLE, metadata.title, Field.Store.YES))
     doc.add(new LongField(FIELD_TS, metadata.timeStamp, Field.Store.YES))
+    doc.add(new LongField(FIELD_CREATION_TIME, metadata.creationTime, Field.Store.YES))
     doc.add(new TextField(FIELD_DESC, metadata.description, Field.Store.YES))
     doc.add(new TextField(FIELD_AUTHOR_NAME, metadata.authorName, Field.Store.YES))
     doc.add(new TextField(FIELD_AUTHOR_LINK, metadata.authorLink, Field.Store.YES))
@@ -131,6 +150,10 @@ object LuceneIndex {
     doc.add(new StringField(FIELD_USAGE_COUNT, usageToString(metadata.usageCount), Field.Store.YES))
     doc.add(new StringField(FIELD_TEMPLATE_TEMPLATE, booleanToString(metadata.templateTemplate), Field.Store.YES))
     doc.add(new StringField(FIELD_SOURCE_LINK, metadata.sourceLink, Field.Store.YES))
+    doc.add(new StringField(FIELD_CATEGORY, metadata.category, Field.Store.YES))
+    metadata.authorLogo.foreach(logo => doc.add(new StringField(FIELD_AUTHOR_LOGO, logo, Field.Store.YES)))
+    metadata.authorBio.foreach(bio => doc.add(new TextField(FIELD_AUTHOR_BIO, bio, Field.Store.YES)))
+    metadata.authorTwitter.foreach(twitter => doc.add(new StringField(FIELD_AUTHOR_TWITTER, twitter, Field.Store.YES)))
     doc
   }
 

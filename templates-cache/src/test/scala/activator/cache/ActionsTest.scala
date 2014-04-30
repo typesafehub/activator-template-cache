@@ -33,12 +33,17 @@ class ActionsTest {
       description = "This is a foo",
       authorName = "bob",
       authorLink = "http://example.com/bob",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Some guy named bob"),
+      authorTwitter = Some("bob"),
       tags = Seq.empty,
       timeStamp = 1L,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME,
       featured = true,
       usageCount = None,
       templateTemplate = true,
-      sourceLink = "http://example.com/source")
+      sourceLink = "http://example.com/source",
+      category = TemplateMetadata.Category.INDIVIDUAL)
 
     val metadataFile = new java.io.File(dir, Constants.METADATA_FILENAME)
 
