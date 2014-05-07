@@ -38,7 +38,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     catch {
       case e: Exception =>
         log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
-        throw RepositoryException(s"Failed to download ${url}", e)
+        throw RepositoryException(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}", e)
     }
   }
 
@@ -61,7 +61,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     } catch {
       case e: Exception =>
         log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
-        throw RepositoryException(s"Failed to download ${url}", e)
+        throw RepositoryException(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}", e)
     }
   }
 
@@ -104,7 +104,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     client.getObject(request, dest)
   } catch {
     case e: Exception =>
-      throw RepositoryException(s"Failed to download ${url} from s3", e)
+      throw RepositoryException(s"Failed to download ${url} from s3: ${e.getClass.getName}: ${e.getMessage}", e)
   }
 
   protected def existsFromS3(url: URI): Boolean = try {
@@ -121,7 +121,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
         log.debug(s"404 on S3 object ${url}: ${e.getStatusCode}: ${e.getErrorCode}: ${e.getMessage}")
         false
       } else {
-        throw RepositoryException(s"Failed to check existence of ${url} on s3: ${e.getMessage}", e)
+        throw RepositoryException(s"Failed to check existence of ${url} on s3: ${e.getClass.getName}: ${e.getMessage}", e)
       }
     case e: Exception =>
       // Exception includes AmazonClientException which is an error before the
