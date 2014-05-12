@@ -53,6 +53,12 @@ trait RemoteTemplateRepository {
   def templateZipURI(uuid: UUID): URI
 
   /**
+   * Calculates the URI where we would find the logo,
+   * we would normally stick this in the cache as authorLogo
+   */
+  def authorLogoURI(uuid: UUID): URI
+
+  /**
    * Checks whether the bundled version of the template exists.
    */
   def templateBundleExists(activatorVersion: String,

@@ -64,6 +64,8 @@ class RemoteTemplateStubTest {
 
     def templateZipURI(uuid: UUID): URI = ???
 
+    def authorLogoURI(uuid: UUID): URI = ???
+
     def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File = ???
   }
 

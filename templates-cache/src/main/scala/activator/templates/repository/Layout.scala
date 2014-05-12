@@ -45,6 +45,8 @@ object Layout {
     templateDirectory(base) / (hashDirectories(id) + templateFile(id))
   def templateBundle(base: URI, activatorVersion: String, id: String, templateName: String): URI =
     templateDirectory(base) / (hashDirectories(id) + id + "/" + activatorVersion + "/" + templateName + ".zip")
+  def authorLogo(base: URI, id: String): URI =
+    templateDirectory(base) / (hashDirectories(id) + id + "/logo")
   def minimalActivatorDist(base: URI, activatorVersion: String): URI =
     base / s"${activatorVersion}/typesafe-activator-${activatorVersion}-minimal.zip"
 }
@@ -56,6 +58,8 @@ class Layout(base: URI) {
   def index(hash: String) = Layout.indexUri(base, hash)
   def templateBundle(activatorVersion: String, id: String, templateName: String) =
     Layout.templateBundle(base, activatorVersion, id, templateName)
+  def authorLogo(id: String) =
+    Layout.authorLogo(base, id)
   def minimalActivatorDist(activatorVersion: String) =
     Layout.minimalActivatorDist(base, activatorVersion)
 }

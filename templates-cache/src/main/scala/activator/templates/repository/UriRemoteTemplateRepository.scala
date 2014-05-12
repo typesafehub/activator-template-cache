@@ -215,6 +215,9 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     templateName: String): URI =
     layout.templateBundle(activatorVersion, uuid.toString, templateName)
 
+  override def authorLogoURI(uuid: UUID): URI =
+    layout.authorLogo(uuid.toString)
+
   override def templateBundleExists(activatorVersion: String,
     uuid: UUID,
     templateName: String): Boolean =
