@@ -31,6 +31,17 @@ trait PublishableTemplateRepository extends RemoteTemplateRepository {
     zipFile: java.io.File): ProcessResult[Unit]
 
   /**
+   * Attempts to publish a template (by template UUID + logo file) to amazon S3.
+   *
+   * @return
+   *      Either nothing (Unit) or the failures.
+   */
+  def publishAuthorLogo(
+    uuid: UUID,
+    logoFile: java.io.File,
+    contentType: String): ProcessResult[Unit]
+
+  /**
    * Attempts to publish a template with Activator launcher bundled.
    *
    * @return
