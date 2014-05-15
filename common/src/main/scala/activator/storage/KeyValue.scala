@@ -3,6 +3,8 @@
  */
 package activator.storage
 
+import scala.reflect.ClassTag
+
 trait KeyValueWriter[-T] {
   def toMap(t: T): Map[String, Any]
 }
@@ -18,7 +20,7 @@ trait KeyValueMapper[T] extends KeyValueWriter[T] with KeyValueReader[T] {
 object KeyValueMapper {
 
   implicit class HasGetAs(val o: Map[String, Any]) extends AnyVal {
-    def getAs[A: ClassManifest](key: String): Option[A] = {
+    def getAs[A: ClassTag](key: String): Option[A] = {
       o.get(key) map CheckedCast[A]
     }
   }
