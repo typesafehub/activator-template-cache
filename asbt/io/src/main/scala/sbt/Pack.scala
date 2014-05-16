@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009 Mark Harrah
  */
-package sbt
+package asbt
 
 import java.io.{File, FileOutputStream}
 import java.util.jar.{JarEntry, JarFile, JarOutputStream, Pack200}

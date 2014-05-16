@@ -2,7 +2,7 @@
  * Copyright 2011 Sanjin Sehic
  */
 
-package sbt
+package asbt
 
 import java.net.URI
 

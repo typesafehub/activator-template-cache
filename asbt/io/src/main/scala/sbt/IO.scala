@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009, 2010 Mark Harrah, Viktor Klang, Ross McDonald
  */
-package sbt
+package asbt
 
 import Using._
 import ErrorHandling.translate

@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009, 2010  Mikko Peltonen, Stuart Roebuck, Mark Harrah
  */
-package sbt
+package asbt
 
 	import annotation.tailrec
 

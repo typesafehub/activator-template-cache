@@ -1,4 +1,4 @@
-package sbt
+package asbt
 
 import java.io.File
 import IO.{withTemporaryDirectory, write}
