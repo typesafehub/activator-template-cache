@@ -183,7 +183,12 @@ class LuceneIndex(dirName: File, dir: Directory) extends IndexDb {
   def templateByName(name: String): Option[IndexStoredTemplateMetadata] = {
     // we try the old way using the tokenized name field to search
     // if the new way fails (e.g. we have an old index)
-    val untokenizedQueryResults = executeQuery(new TermQuery(new Term(FIELD_NAME_UNTOKENIZED, name)), 1)
+    val untokenizedQueryResults = try {
+      executeQuery(new TermQuery(new Term(FIELD_NAME_UNTOKENIZED, name)), 1)
+    } catch {
+      case NonFatal(e) =>
+        Nil
+    }
     if (untokenizedQueryResults.isEmpty)
       search(name).find(_.name == name)
     else
