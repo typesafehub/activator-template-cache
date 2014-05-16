@@ -33,8 +33,7 @@ object ActivatorBuild {
       .setPreference(IndentSpaces, 2)
   }
 
-  def activatorDefaults: Seq[Setting[_]] =
-    SbtScalariform.scalariformSettings ++
+  def activatorDefaultsNoFormatting: Seq[Setting[_]] =
     Seq(
       organization := "com.typesafe.activator",
       version <<= version in ThisBuild,
@@ -55,7 +54,12 @@ object ActivatorBuild {
       javacOptions in (Compile, doc) := Seq("-source", "1.6"),
       scalaVersion := Dependencies.scalaVersion,
       scalaBinaryVersion := Dependencies.scalaBinaryVersion,
-      libraryDependencies ++= Seq(Dependencies.junitInterface % "test", Dependencies.specs2 % "test"),
+      libraryDependencies ++= Seq(Dependencies.junitInterface % "test", Dependencies.specs2 % "test"))
+
+  def activatorDefaults: Seq[Setting[_]] =
+    SbtScalariform.scalariformSettings ++
+    activatorDefaultsNoFormatting ++
+    Seq(
       ScalariformKeys.preferences in Compile := formatPrefs,
       ScalariformKeys.preferences in Test    := formatPrefs,
       makeFixWhitespace(Compile),
@@ -64,8 +68,16 @@ object ActivatorBuild {
       compileInputs in (Test, compile) <<= (compileInputs in (Test, compile)) dependsOn (fixWhitespace in Test)
     )
 
+  private def activatorProject(name: String, dir: File): Project =
+    Project("activator-" + name, dir)
+
+  def ActivatorProjectNoFormatting(name: String, dir: String): Project = (
+    activatorProject(name, file(dir))
+    settings(activatorDefaultsNoFormatting:_*)
+  )
+
   def ActivatorProject(name: String): Project = (
-    Project("activator-" + name, file(name))
+    activatorProject(name, file(name))
     settings(activatorDefaults:_*)
   )
 }

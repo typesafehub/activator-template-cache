@@ -4,7 +4,7 @@
 package activator
 package cache
 
-import sbt.{ PathFinder, IO }
+import asbt.{ PathFinder, IO }
 import java.io.File
 // This class contains methods that are responsible for pulling
 // local caches out of our local zip file.

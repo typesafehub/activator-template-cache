@@ -6,7 +6,7 @@ package cache
 
 import java.io.File
 import akka.actor.{ Actor, ActorLogging }
-import sbt.{ IO, PathFinder }
+import asbt.{ IO, PathFinder }
 import scala.util.control.NonFatal
 import akka.actor.Status
 import activator.templates.repository.RepositoryException
@@ -111,7 +111,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     catch {
       case NonFatal(ex) =>
         // We have a non-fatal exception, let's make sure the template directory is GONE, so the cache is consistent.
-        if (templateDir.isDirectory) sbt.IO delete templateDir
+        if (templateDir.isDirectory) asbt.IO delete templateDir
         // Also, we should probably wrap this in some sort of exception we can use later...
         throw ResolveTemplateException(s"Unable to download template: $id", ex)
     }
