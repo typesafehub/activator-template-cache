@@ -10,7 +10,7 @@ import java.io.File
 import akka.actor._
 import concurrent.Await
 import concurrent.duration._
-import sbt.IO
+import asbt.IO
 import java.util.UUID
 import java.net.URI
 
@@ -63,6 +63,8 @@ class RemoteTemplateStubTest {
       templateName: String): Boolean = ???
 
     def templateZipURI(uuid: UUID): URI = ???
+
+    def authorLogoURI(uuid: UUID): URI = ???
 
     def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File = ???
   }

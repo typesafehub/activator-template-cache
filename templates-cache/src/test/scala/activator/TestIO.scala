@@ -5,7 +5,7 @@ package activator
 
 import org.junit.Assert._
 import org.junit.Test
-import sbt.IO
+import asbt.IO
 import java.io.File
 
 class TestIO {

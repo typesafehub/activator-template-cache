@@ -9,7 +9,7 @@ import cache._
 import java.net.URI
 import java.net.URL
 import java.io.File
-import sbt.IO
+import asbt.IO
 import scala.util.control.NonFatal
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.auth.AnonymousAWSCredentials
@@ -214,6 +214,9 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     uuid: UUID,
     templateName: String): URI =
     layout.templateBundle(activatorVersion, uuid.toString, templateName)
+
+  override def authorLogoURI(uuid: UUID): URI =
+    layout.authorLogo(uuid.toString)
 
   override def templateBundleExists(activatorVersion: String,
     uuid: UUID,

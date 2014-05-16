@@ -76,6 +76,10 @@ case class AuthorDefinedTemplateMetadata(
       notTooLong(s, fieldName, 120)
     def notTooLongParagraph(s: String, fieldName: String): Seq[String] =
       notTooLong(s, fieldName, 1024)
+    def notTooLongDataLink(s: String, fieldName: String): Seq[String] =
+      notTooLong(s, fieldName, 1024 * 64)
+    def notTooLongLink(s: String, fieldName: String): Seq[String] =
+      notTooLong(s, fieldName, 512)
     def nonEmpty(s: String, fieldName: String): Seq[String] =
       if (s.isEmpty) Seq(s"$fieldName is empty") else Nil
     def validLink(s: String, fieldName: String): Seq[String] = {
@@ -122,7 +126,8 @@ case class AuthorDefinedTemplateMetadata(
     }
     val oneLineCheck = make(nonEmpty, noControlChars, notTooLongLine)
     val paragraphCheck = make(nonEmpty, noControlCharsExceptLineBreak, notTooLongParagraph)
-    val linkCheck = make(paragraphCheck, validLink)
+    val linkCheck = make(nonEmpty, noControlChars, notTooLongLink, validLink)
+    val imageLinkCheck = make(nonEmpty, noControlChars, notTooLongDataLink, validLink)
     val tagCheck = make(notTooLong(_, _, 50), validTag)
     val nameCheck = make(oneLineCheck, validUrlFriendly)
     val twitterCheck = make(nonEmpty, noControlChars, notTooLong(_, _, 15), validTwitter)
@@ -130,7 +135,7 @@ case class AuthorDefinedTemplateMetadata(
     val errors = nameCheck(name, "name") ++ oneLineCheck(title, "title") ++
       paragraphCheck(description, "description") ++ authorLink.map(linkCheck(_, "authorLink")).getOrElse(Nil) ++
       authorName.map(oneLineCheck(_, "authorName")).getOrElse(Nil) ++
-      authorLogo.map(linkCheck(_, "authorLogo")).getOrElse(Nil) ++
+      authorLogo.map(imageLinkCheck(_, "authorLogo")).getOrElse(Nil) ++
       authorBio.map(paragraphCheck(_, "authorBio")).getOrElse(Nil) ++
       authorTwitter.map(twitterCheck(_, "authorTwitter")).getOrElse(Nil) ++
       tags.flatMap(tagCheck(_, "tags")) ++ noneEmpty(tags, "tags") ++

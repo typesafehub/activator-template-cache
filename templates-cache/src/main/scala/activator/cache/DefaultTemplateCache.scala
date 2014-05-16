@@ -85,6 +85,9 @@ object DefaultTemplateCache {
     def templateZipURI(uuid: UUID): URI =
       sys.error("Offline mode! can't get template zip")
 
+    def authorLogoURI(uuid: UUID): URI =
+      sys.error("Offline mode! can't get author logo")
+
     def resolveMinimalActivatorDist(toFile: File, activatorVersion: String): File =
       sys.error("Offline mode! Can't get minimal activator dist")
   }

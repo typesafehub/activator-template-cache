@@ -16,6 +16,7 @@ import com.amazonaws.services.s3.model.PutObjectRequest
 import scala.util.control.NonFatal
 import com.amazonaws.services.s3.model.GetObjectMetadataRequest
 import com.amazonaws.services.s3.model.AmazonS3Exception
+import com.amazonaws.services.s3.model.ObjectMetadata
 
 /**
  * This class can publish and and read from the S3 Repository.
@@ -71,6 +72,17 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
       result <- publish(location, zipFile)
     } yield result
 
+  def publishAuthorLogo(
+    uuid: UUID,
+    logoFile: java.io.File,
+    contentType: String): ProcessResult[Unit] =
+    for {
+      location <- Validating.withMsg(s"Unable to publish authorLogo for template instance $uuid") {
+        layout.authorLogo(uuid.toString)
+      }
+      result <- publish(location, logoFile, Some(contentType))
+    } yield result
+
   def publishIndex(indexZip: java.io.File, serial: Long): ProcessResult[Unit] =
     for {
       hash <- hashFile(indexZip)
@@ -103,16 +115,15 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
 
   // This variant of publish will attempt to publish three times before
   // giving up all hope and bombing.
-  private def publish(dest: URI, src: java.io.File): ProcessResult[Unit] =
+  private def publish(dest: URI, src: java.io.File, contentType: Option[String] = None): ProcessResult[Unit] =
     Validating.withMsg(s"Failed to publish $src to $dest") {
       val tries = 3
       def attemptToPublish(remainingTries: Int = tries): Unit =
         if (remainingTries > 0) {
-          try publishUnsafe(dest, src)
+          try publishUnsafe(dest, src, contentType)
           catch {
             case NonFatal(err) =>
-              // TODO - Save the error?
-              log.error(s"Failed to publish $src to $dest:  ${err.getClass.getName} - ${err.getMessage}")
+              log.error(s"Failed to publish $src to $dest: ${err.getClass.getName}: ${err.getMessage}: ${remainingTries - 1} retries remain", err)
               // We delay a bit before retrying
               // THAT'S RIGHT, block the world.
               Thread.sleep(10 * 1000L) // 10 seconds
@@ -123,10 +134,18 @@ class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: U
       attemptToPublish()
     }
 
-  private def publishUnsafe(dest: URI, src: java.io.File): Unit = {
+  private def publishUnsafe(dest: URI, src: java.io.File, contentType: Option[String]): Unit = {
     log.debug(s"publishing $src to $dest")
     val client = makeClient()
     val request = new PutObjectRequest(dest.getHost, cleanLocation(dest.getRawPath), src)
+    contentType.foreach { ct =>
+      // PutObjectRequest may automatically pick some metadata
+      // or may leave it null, not sure, so this is coded
+      // paranoia-style
+      if (request.getMetadata() == null)
+        request.setMetadata(new ObjectMetadata)
+      request.getMetadata().setContentType(ct)
+    }
     client.putObject(request)
     log.debug(s"publishing $src to $dest - DONE")
   }
