@@ -14,6 +14,7 @@ import lucene.document._
 import lucene.search.IndexSearcher
 import lucene.search.TermQuery
 import lucene.queryparser.classic.MultiFieldQueryParser
+import scala.util.control.NonFatal
 
 class LuceneIndexDbException(msg: String, cause: Throwable)
   extends Exception(msg, cause)
@@ -58,6 +59,7 @@ class LuceneIndexWriter(directory: Directory) extends IndexWriter {
 object LuceneIndex {
   val FIELD_ID = "id"
   val FIELD_NAME = "name"
+  val FIELD_NAME_UNTOKENIZED = "nameUntokenized"
   val FIELD_TITLE = "title"
   val FIELD_DESC = "description"
   val FIELD_TS = "timestamp"
@@ -84,7 +86,7 @@ object LuceneIndex {
 
   def documentToMetadata(doc: Document): IndexStoredTemplateMetadata = {
     val id = doc get FIELD_ID
-    val name = doc get FIELD_NAME
+    val name = Option(doc get FIELD_NAME_UNTOKENIZED).getOrElse(doc get FIELD_NAME)
     val title = doc get FIELD_TITLE
     // If we get a failure pulling this as a long, then we have a bad index...
     // We need to figure out how to throw an error and what to do about it...
@@ -139,6 +141,7 @@ object LuceneIndex {
     // understanding anyway.
     doc.add(new StringField(FIELD_ID, metadata.id, Field.Store.YES))
     doc.add(new TextField(FIELD_NAME, metadata.name, Field.Store.YES))
+    doc.add(new StringField(FIELD_NAME_UNTOKENIZED, metadata.name, Field.Store.YES))
     doc.add(new TextField(FIELD_TITLE, metadata.title, Field.Store.YES))
     doc.add(new LongField(FIELD_TS, metadata.timeStamp, Field.Store.YES))
     doc.add(new LongField(FIELD_CREATION_TIME, metadata.creationTime, Field.Store.YES))
@@ -178,12 +181,13 @@ class LuceneIndex(dirName: File, dir: Directory) extends IndexDb {
     executeQuery(new TermQuery(new Term(FIELD_ID, id)), 1).headOption
 
   def templateByName(name: String): Option[IndexStoredTemplateMetadata] = {
-    // NOTE: We need to bump binary compatibility at some point
-    // and store RAW names (un-tokenzied) so we can do direct indexing on name.
-    //  For now, we just do an in-memory additional filter.  We assume
-    // search is powerful enough to find what we want.
-    search(name).find(_.name == name)
-
+    // we try the old way using the tokenized name field to search
+    // if the new way fails (e.g. we have an old index)
+    val untokenizedQueryResults = executeQuery(new TermQuery(new Term(FIELD_NAME_UNTOKENIZED, name)), 1)
+    if (untokenizedQueryResults.isEmpty)
+      search(name).find(_.name == name)
+    else
+      untokenizedQueryResults.headOption
   }
 
   def featured: Iterable[IndexStoredTemplateMetadata] =
