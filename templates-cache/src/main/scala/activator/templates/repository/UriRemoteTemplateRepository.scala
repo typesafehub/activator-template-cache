@@ -9,7 +9,7 @@ import cache._
 import java.net.URI
 import java.net.URL
 import java.io.File
-import sbt.IO
+import asbt.IO
 import scala.util.control.NonFatal
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.auth.AnonymousAWSCredentials
