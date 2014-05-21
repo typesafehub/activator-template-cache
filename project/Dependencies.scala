@@ -6,7 +6,7 @@ import sbt._
 object Dependencies {
   val scalaVersion            = "2.11.0"
   val scalaBinaryVersion      = "2.11"
-  val sbtDependencyVersion    = "0.13.5-RC1"
+  val sbtDependencyVersion    = "0.13.6-MSERVER-1"
   val akkaVersion             = "2.3.2"
   val luceneVersion           = "4.3.0"
 

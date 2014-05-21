@@ -19,33 +19,14 @@ object ActivatorTemplatesBuild extends Build {
     )
   )
 
-  // cut-and-paste of sbt.control used by cut-and-paste of sbt.io below
-  lazy val sbtcontrol = (
-    ActivatorProjectNoFormatting("sbtcontrol", "asbt/control")
-  )
-
-  // cut-and-paste of sbt.io so we can use a different scala version
-  lazy val sbtio = (
-    ActivatorProjectNoFormatting("sbtio", "asbt/io")
-    dependsOnRemote(
-      // when we drop this cut-and-paste we won't want this so
-      // it's just here and not in dependencies.scala like specs
-      "org.scalacheck" %% "scalacheck" % "1.11.1" % "test",
-      "org.scala-lang" % "scala-compiler" % Dependencies.scalaVersion % "test"
-    )
-    dependsOn(sbtcontrol)
-  )
-
   // Common utilities, like "ProcessResult" monad and hashing.
   lazy val common = (
     ActivatorProject("common")
     dependsOnRemote(
       scalaXml,
       scalaParserCombinators,
-      commonsCompress
-    )
-    dependsOn(
-      sbtio % "test"
+      commonsCompress,
+      sbtIo % "test"
     )
   )
 
@@ -55,12 +36,13 @@ object ActivatorTemplatesBuild extends Build {
     dependsOnRemote(
       scalaXml,
       scalaParserCombinators,
+      sbtIo,
       lucene, 
       luceneAnalyzerCommon, 
       luceneQueryParser,
       akkaActor,
       amazonWS 
     )
-    dependsOn(common, sbtio)
+    dependsOn(common)
   )
 }
