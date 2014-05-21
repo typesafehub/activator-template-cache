@@ -13,14 +13,12 @@ import java.io.File
  */
 sealed abstract class ProcessResult[+T] {
 
-  type Validation = T => Option[ProcessError]
-
   /**
    * Takes a series of validation functions and
    * runs them against the current value (if defined).  If any fail, their error messages
    * are added to the set of failures returned.
    */
-  def validate(validations: Validation*): ProcessResult[T] =
+  def validate(validations: (T => Option[ProcessError])*): ProcessResult[T] =
     this match {
       case ProcessSuccess(value) =>
         validations flatMap (validate => validate(value).toSeq) match {
@@ -113,7 +111,7 @@ object ProcessResult {
   implicit class uglyFutureChainingJunk[T](val value: Future[ProcessResult[T]]) extends AnyVal {
     // Since we're not using Scalaz and crazy moandT junk, we just hack the hell out of our normal stack of monads.
     def flatMapNested[U](f: T => Future[ProcessResult[U]])(implicit ctx: ExecutionContext): Future[ProcessResult[U]] = {
-      val result = promise[ProcessResult[U]]
+      val result = Promise[ProcessResult[U]]()
       value map {
         case ProcessSuccess(value) =>
           f(value) onComplete { result complete _ }
@@ -124,7 +122,7 @@ object ProcessResult {
   }
   implicit class uglyChainingJunk2[T](val value: ProcessResult[T]) extends AnyVal {
     def flatMapNested[U](f: T => Future[ProcessResult[U]])(implicit ctx: ExecutionContext): Future[ProcessResult[U]] = {
-      val result = promise[ProcessResult[U]]
+      val result = Promise[ProcessResult[U]]()
       value match {
         case ProcessSuccess(v) =>
           f(v) onComplete { result complete _ }

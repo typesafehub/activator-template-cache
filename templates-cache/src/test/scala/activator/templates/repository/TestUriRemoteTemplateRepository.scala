@@ -7,7 +7,7 @@ package repository
 
 import cache._
 import java.io.{ IOException, File }
-import asbt.{ IO, PathFinder }
+import sbt.{ IO, PathFinder }
 
 import org.junit._
 import Assert._

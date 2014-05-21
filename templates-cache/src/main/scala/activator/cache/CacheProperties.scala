@@ -4,7 +4,7 @@
 package activator
 package cache
 
-import asbt.IO
+import sbt.IO
 import java.io.File
 /**
  * This class is able to read a cache properties file and

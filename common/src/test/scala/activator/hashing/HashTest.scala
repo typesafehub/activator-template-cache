@@ -7,7 +7,7 @@ package hashing
 import org.junit.Assert._
 import org.junit._
 import java.io.File
-import asbt.IO
+import sbt.IO
 
 class HashTest {
 

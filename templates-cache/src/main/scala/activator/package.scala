@@ -1,7 +1,7 @@
 /**
  * Copyright (C) 2013 Typesafe <http://typesafe.com/>
  */
-import asbt.IO
+import sbt.IO
 import java.io.File
 import java.util.Random
 import java.io.IOException
@@ -61,7 +61,7 @@ package object activator {
     // it would be more consistent to name this just "writer" but then
     // the existing method on IO always gets chosen and so this one isn't found
     def fileWriter[T](file: File, charset: Charset = io.utf8, append: Boolean = false)(f: BufferedWriter => T): T =
-      asbt.Using.fileWriter(charset, append)(file) { f }
+      sbt.Using.fileWriter(charset, append)(file) { f }
 
     // IO.write writes a properties file but in ISO-8859-1 always so use this instead
     def writeProperties(file: File, props: Properties, comments: String, charset: Charset = io.utf8): Unit =

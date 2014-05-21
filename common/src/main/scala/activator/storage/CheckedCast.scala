@@ -3,11 +3,13 @@
  */
 package activator.storage
 
+import scala.reflect._
+
 object CheckedCast {
 
   // this should match the widenings in Predef
-  private def numericWidening[A <: Any: ClassManifest](value: Any, valueBoxedClass: Class[_]): Option[A] = {
-    val targetErasure = classManifest[A].erasure
+  private def numericWidening[A <: Any: ClassTag](value: Any, valueBoxedClass: Class[_]): Option[A] = {
+    val targetErasure = classTag[A].runtimeClass
     val optionalTargetBoxedClass = if (classOf[java.lang.Number].isAssignableFrom(targetErasure)) {
       Some(targetErasure)
     } else {
@@ -88,10 +90,10 @@ object CheckedCast {
   // This is all done with deprecated ClassManifest because it was
   // written for 2.9, and the new TypeTag stuff is not thread-safe.
   // Perhaps a macro-based solution would be better in 2.10 anyway.
-  def apply[A <: Any: ClassManifest](value: Any): A = {
+  def apply[A <: Any: ClassTag](value: Any): A = {
     if (value == null) {
-      if (classManifest[A] <:< classManifest[AnyVal]) {
-        throw new ClassCastException("null can't be converted to AnyVal type " + classManifest[A])
+      if (classTag[A] <:< classTag[AnyVal]) {
+        throw new ClassCastException("null can't be converted to AnyVal type " + classTag[A])
       } else {
         null.asInstanceOf[A]
       }
@@ -107,13 +109,13 @@ object CheckedCast {
              * java.lang.Integer, so we can leave the value boxed.
              */
 
-      if (classManifest[A].erasure.isAssignableFrom(unboxedClass) ||
-        classManifest[A].erasure.isAssignableFrom(klass)) {
+      if (classTag[A].runtimeClass.isAssignableFrom(unboxedClass) ||
+        classTag[A].runtimeClass.isAssignableFrom(klass)) {
         value.asInstanceOf[A]
       } else {
         val numericValue = numericWidening[A](value, klass)
 
-        numericValue.getOrElse(throw new ClassCastException("Requested " + classManifest[A] + " but value is " + value + " with type " +
+        numericValue.getOrElse(throw new ClassCastException("Requested " + classTag[A] + " but value is " + value + " with type " +
           klass.getName))
       }
     }
