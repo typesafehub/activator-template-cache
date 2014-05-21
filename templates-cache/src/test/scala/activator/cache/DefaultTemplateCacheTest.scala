@@ -10,7 +10,7 @@ import java.io.File
 import akka.actor._
 import concurrent.Await
 import concurrent.duration._
-import asbt.IO
+import sbt.IO
 
 class DefaultTemplateCacheTest {
 

@@ -4,7 +4,7 @@
 package activator
 package cache
 
-import asbt.IO
+import sbt.IO
 import java.io.File
 import java.util.regex.Matcher
 import java.io.FileNotFoundException
@@ -56,7 +56,7 @@ object Actions {
     // we cannot find the config files or they do not have the config we expect.
     // Templates which want new application secrets will need to abide by these conventions.
     // Right now, all templates do, but it's a fuzzy interface.
-    val base = asbt.PathFinder(basedir)
+    val base = sbt.PathFinder(basedir)
     val applicationConf: Seq[File] =
       (((base ** "conf") +++ (base ** "resources")) * "application.conf").get
     // helper to replace the secret in a given file.

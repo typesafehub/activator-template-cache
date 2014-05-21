@@ -3,7 +3,7 @@
  */
 package activator.cache
 
-import asbt.IO
+import sbt.IO
 import java.io._
 import org.junit.Assert._
 import org.junit._

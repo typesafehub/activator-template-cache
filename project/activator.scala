@@ -13,9 +13,6 @@ object ActivatorBuild {
 
   // We give these different names than the deaults so we don't conflict....
   val typesafeIvyReleases = Resolver.url("typesafe-ivy-private-releases", new URL("http://private-repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns)
-  // TODO - When SBT 0.13 is out we won't need this...
-  val typesafeIvySnapshots = Resolver.url("typesafe-ivy-private-snapshots", new URL("http://private-repo.typesafe.com/typesafe/ivy-snapshots/"))(Resolver.ivyStylePatterns)
-
 
   // Scalariform Junk
   private val fixWhitespace = TaskKey[Seq[File]]("fix-whitespace")
@@ -39,10 +36,7 @@ object ActivatorBuild {
       version <<= version in ThisBuild,
       crossPaths := false,
       resolvers += "typesafe-mvn-releases" at "http://repo.typesafe.com/typesafe/releases/",
-      resolvers += Resolver.url("typesafe-ivy-releases", new URL("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
-      // TODO - This won't be needed when SBT 0.13 is released...
       resolvers += typesafeIvyReleases,
-      resolvers += typesafeIvySnapshots,
       // TODO - Publish to ivy for sbt plugins, maven central otherwise?
       publishTo := Some(typesafeIvyReleases),
       publishMavenStyle := false,
