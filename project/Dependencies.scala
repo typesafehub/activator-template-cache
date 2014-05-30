@@ -4,10 +4,10 @@
 import sbt._
 
 object Dependencies {
-  val scalaVersion            = "2.11.0"
+  val scalaVersion            = "2.11.1"
   val scalaBinaryVersion      = "2.11"
-  val sbtDependencyVersion    = "0.13.6-MSERVER-1"
-  val akkaVersion             = "2.3.2"
+  val sbtDependencyVersion    = "0.13.5"
+  val akkaVersion             = "2.3.3"
   val luceneVersion           = "4.3.0"
 
   val sbtIo                   = "org.scala-sbt"           % "io"                        % sbtDependencyVersion
@@ -21,7 +21,7 @@ object Dependencies {
   val scalaXml                = "org.scala-lang.modules"  %% "scala-xml"                % "1.0.1"
   val scalaParserCombinators  = "org.scala-lang.modules"  %% "scala-parser-combinators" % "1.0.1"
 
-  val junitInterface          = "com.novocode"            % "junit-interface"           % "0.7"
+  val junitInterface          = "com.novocode"            % "junit-interface"           % "0.10"
   val specs2                  = "org.specs2"              % "specs2_2.11"               % "2.3.12"
 
   // Mini DSL
