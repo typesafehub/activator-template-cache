@@ -5,10 +5,9 @@ package activator
 package cache
 
 import java.io.File
-import akka.actor.{ Actor, ActorLogging }
+import akka.actor.{ Stash, Actor, ActorLogging, Status }
 import sbt.{ IO, PathFinder }
 import scala.util.control.NonFatal
-import akka.actor.Status
 import activator.templates.repository.RepositoryException
 
 /** This class represents the inability to resolve a template from the internet, and not some other fatal error. */
@@ -24,18 +23,32 @@ case class ResolveTemplateException(msg: String, cause: Throwable) extends Runti
  * TODO - Add a manager in front of this actor that knows how to update the lucene index and reboot this guy.
  */
 class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean = true)
-  extends Actor with ForwardingExceptions with ActorLogging {
+  extends Actor with ForwardingExceptions with ActorLogging with Stash {
   import TemplateCacheActor._
 
-  def receive: Receive = forwardingExceptionsToFutures {
-    // TODO - Make sure we send failures to sender as well, so futures
-    // complete immediately.
+  def receive = {
+    case InitializeNormal =>
+      unstashAll()
+      context become receiveNormal
+    case InitializeFailure(e) =>
+      unstashAll()
+      context become receiveFailure(e)
+    case _ =>
+      // used to prevent race - if someone sends a message to the actor before it is properly initialized we just stash it
+      stash()
+  }
+
+  def receiveNormal: Receive = forwardingExceptionsToFutures {
     case GetTemplate(id: String) => sender ! TemplateResult(getTemplate(id))
     case GetTutorial(id: String) => sender ! TutorialResult(getTutorial(id))
     case SearchTemplates(query, max) => sender ! TemplateQueryResult(searchTemplates(query, max))
     case SearchTemplateByName(name) => sender ! TemplateQueryResult(searchTemplateByName(name))
     case ListTemplates => sender ! TemplateQueryResult(listTemplates)
     case ListFeaturedTemplates => sender ! TemplateQueryResult(listFeaturedTemplates)
+  }
+
+  def receiveFailure(e: Exception): Receive = {
+    case _ => sender ! Status.Failure(e)
   }
 
   def listTemplates = fillMetadata(index.metadata)
@@ -121,24 +134,32 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
   var props: CacheProperties = null
 
   override def preStart(): Unit = {
-    // Our index is underneath the cache location...
-    props = new CacheProperties(new File(location, Constants.CACHE_PROPS_FILENAME))
-    // Here we check to see if we need to update the local cache.
-    val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
-    // Here we need to not throw...
     try {
-      if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
-        val newHash = remote.resolveIndexTo(indexFile)
-        props.cacheIndexHash = newHash
-        props.save("Updating the local index.")
+      // Our index is underneath the cache location...
+      props = new CacheProperties(new File(location, Constants.CACHE_PROPS_FILENAME))
+      // Here we check to see if we need to update the local cache.
+      val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
+      // Here we need to not throw...
+      try {
+        if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
+          val newHash = remote.resolveIndexTo(indexFile)
+          props.cacheIndexHash = newHash
+          props.save("Updating the local index.")
+        }
+      } catch {
+        case e: RepositoryException => // Ignore, we're in offline mode.
+          log.info("Unable to check remote server for template updates.")
       }
+      // Now we open the index file.
+      index = provider.open(indexFile)
+      self ! InitializeNormal
     } catch {
-      case e: RepositoryException => // Ignore, we're in offline mode.
-        log.info("Unable to check remote server for template updates.")
+      case e: Exception =>
+        log.error("Could not initialize TemplateCacheActor - entering failure state", e)
+        self ! InitializeFailure(e)
     }
-    // Now we open the index file.
-    index = provider.open(indexFile)
   }
+
   override def postStop(): Unit = {
     if (index != null) {
       index.close()
@@ -157,4 +178,7 @@ object TemplateCacheActor {
   case class TemplateResult(template: Option[Template])
   case class TemplateQueryResult(templates: Iterable[TemplateMetadata])
   case class TutorialResult(tutorial: Option[Tutorial])
+
+  case object InitializeNormal
+  case class InitializeFailure(e: Exception)
 }
