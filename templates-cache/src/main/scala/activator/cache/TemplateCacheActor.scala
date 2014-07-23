@@ -136,7 +136,8 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
   override def preStart(): Unit = {
     try {
       // Our index is underneath the cache location...
-      props = new CacheProperties(new File(location, Constants.CACHE_PROPS_FILENAME))
+      val cachePropertiesFile = new File(location, Constants.CACHE_PROPS_FILENAME)
+      props = new CacheProperties(cachePropertiesFile)
       // Here we check to see if we need to update the local cache.
       val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
       // Here we need to not throw...
@@ -148,14 +149,24 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
         }
       } catch {
         case e: RepositoryException => // Ignore, we're in offline mode.
-          log.info("Unable to check remote server for template updates.")
+          log.warning("Failed to check remote server for template catalog updates. (${e.getClass.getName}): ${e.getMessage})")
       }
+
+      if (!cachePropertiesFile.exists) {
+        if (autoUpdate)
+          log.error(s"We don't have ${cachePropertiesFile.getAbsolutePath} so we won't have a working template catalog.")
+        else
+          log.error(s"Template catalog updates are disabled, and ${cachePropertiesFile.getAbsolutePath} didn't already exist, so we won't have a working template catalog.")
+      } else if (!indexFile.exists) {
+        log.error(s"We don't have ${indexFile.getAbsolutePath} even though we have ${cachePropertiesFile.getAbsolutePath}, so we won't have a working template catalog.")
+      }
+
       // Now we open the index file.
       index = provider.open(indexFile)
       self ! InitializeNormal
     } catch {
       case e: Exception =>
-        log.error("Could not initialize TemplateCacheActor - entering failure state", e)
+        log.error("Could not load the template catalog. (${e.getClass.getName}: ${e.getMessage}", e)
         self ! InitializeFailure(e)
     }
   }
