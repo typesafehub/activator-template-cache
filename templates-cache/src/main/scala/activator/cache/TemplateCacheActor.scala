@@ -22,7 +22,7 @@ case class ResolveTemplateException(msg: String, cause: Throwable) extends Runti
  *
  * TODO - Add a manager in front of this actor that knows how to update the lucene index and reboot this guy.
  */
-class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean = true)
+class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean)
   extends Actor with ForwardingExceptions with ActorLogging with Stash {
   import TemplateCacheActor._
 

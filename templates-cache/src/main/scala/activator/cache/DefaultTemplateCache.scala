@@ -11,15 +11,17 @@ import akka.pattern.ask
 import akka.util.Timeout
 import java.util.UUID
 import java.net.URI
+import scala.util.control.NonFatal
 
 class DefaultTemplateCache(
   actorFactory: ActorRefFactory,
   provider: IndexDbProvider,
   location: File,
-  remote: RemoteTemplateRepository)(
+  remote: RemoteTemplateRepository,
+  autoUpdate: Boolean)(
     implicit timeout: Timeout) extends TemplateCache {
 
-  val handler = actorFactory.actorOf(Props(new TemplateCacheActor(provider, location, remote)), "template-cache")
+  val handler = actorFactory.actorOf(Props(new TemplateCacheActor(provider, location, remote, autoUpdate = autoUpdate)), "template-cache")
   import actorFactory.dispatcher
   import TemplateCacheActor._
 
@@ -42,17 +44,24 @@ class DefaultTemplateCache(
 }
 
 object DefaultTemplateCache {
+  private val defaultAutoUpdate = try {
+    (System.getProperty("activator.checkForTemplateUpdates", "true")) == "true"
+  } catch {
+    case NonFatal(e) => true
+  }
+
   /** Creates a default template cache for us. */
   def apply(actorFactory: ActorRefFactory,
     location: File,
     remote: RemoteTemplateRepository = defaultRemoteRepo,
-    seedRepository: Option[File] = None)(
+    seedRepository: Option[File] = None,
+    autoUpdate: Boolean = defaultAutoUpdate)(
       implicit timeout: Timeout): TemplateCache = {
     // If we have a seed repository, copy it over.
     seedRepository foreach (repo => ZipInstallHelper.copyLocalCacheIfNeeded(location, repo))
     val indexProvider = LuceneIndexProvider
     // TODO - Copy cache if needed?
-    new DefaultTemplateCache(actorFactory, indexProvider, location, remote)
+    new DefaultTemplateCache(actorFactory, indexProvider, location, remote, autoUpdate)
   }
 
   /**
