@@ -9,18 +9,14 @@ import java.io.File
 /**
  * This class is able to read a cache properties file and
  *  give us the information stored within it, as well as save new info...
- *
- *  NOTE - This is not threadsafe or anything.  It should probably be hidden behind an actor.
- *
- *  TODO - Auto-Save + Auto-reload on file changes?
  */
-class CacheProperties(location: java.io.File) {
+class CacheProperties(val location: java.io.File) {
   val props = {
     if (!location.exists) IO.touch(location)
     IO.readProperties(location)
   }
 
-  def cacheIndexHash = props.getProperty(Constants.CACHE_HASH_PROPERTY)
+  def cacheIndexHash: Option[String] = Option(props.getProperty(Constants.CACHE_HASH_PROPERTY)) filter (_.trim() != "")
   def cacheIndexHash_=(newId: String) = {
     props.setProperty(Constants.CACHE_HASH_PROPERTY, newId)
   }

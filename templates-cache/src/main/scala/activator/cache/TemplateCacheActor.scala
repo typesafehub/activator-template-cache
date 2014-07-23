@@ -92,7 +92,10 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           Some(Template(meta, fileMappings))
         } catch {
           case ex: ResolveTemplateException =>
-            log.error(s"Failed to resolve template: $id from remote repository.")
+            if (ex.getCause ne null)
+              log.warning(s"${ex.getMessage}: ${ex.getCause.getClass.getName}: ${ex.getCause.getMessage}")
+            else
+              log.warning(ex.getMessage)
             None
         }
       case _ => None
@@ -137,28 +140,53 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     try {
       // Our index is underneath the cache location...
       val cachePropertiesFile = new File(location, Constants.CACHE_PROPS_FILENAME)
+      if (!location.isDirectory() && !location.mkdirs())
+        log.warning(s"Could not create directory ${location}")
       props = new CacheProperties(cachePropertiesFile)
-      // Here we check to see if we need to update the local cache.
       val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
-      // Here we need to not throw...
       try {
-        if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
-          val newHash = remote.resolveIndexTo(indexFile)
-          props.cacheIndexHash = newHash
-          props.save("Updating the local index.")
+        if (autoUpdate) {
+          remote.ifNewIndexProperties(props.cacheIndexHash.getOrElse("")) { newProps =>
+            val newHash = newProps.cacheIndexHash.getOrElse(throw RepositoryException("No index hash field in index.properties file", null))
+            // download the new index
+            remote.resolveIndexTo(indexFile, newHash)
+            // if the download succeeds, update our local props
+            props.cacheIndexHash = newHash
+            props.save("Updating the local index properties.")
+            log.debug(s"Saved new template index hash ${newHash} to ${props.location.getAbsolutePath}")
+          }
+        }
+
+        // We may have the latest index properties but not have the actual index; this
+        // happens in the seed generator, which requires an index properties to be provided.
+        if (!indexFile.exists) {
+          props.cacheIndexHash foreach { currentHash =>
+            log.info(s"We have index hash ${currentHash} but haven't downloaded that index - attempting to download it now.")
+            remote.resolveIndexTo(indexFile, currentHash)
+          }
+        }
+
+        if (indexFile.exists) {
+          props.cacheIndexHash map { currentHash =>
+            log.debug(s"Updated to latest template catalog ${currentHash}, saved in ${location.getAbsolutePath}")
+          } getOrElse {
+            log.debug(s"We appear to have a template catalog ${indexFile.getAbsolutePath}, but we don't know its hash")
+          }
         }
       } catch {
-        case e: RepositoryException => // Ignore, we're in offline mode.
-          log.warning("Failed to check remote server for template catalog updates. (${e.getClass.getName}): ${e.getMessage})")
+        case e: RepositoryException =>
+          log.warning(s"Failed to update template catalog. (${e.getClass.getName}): ${e.getMessage})")
       }
 
-      if (!cachePropertiesFile.exists) {
-        if (autoUpdate)
-          log.error(s"We don't have ${cachePropertiesFile.getAbsolutePath} so we won't have a working template catalog.")
-        else
-          log.error(s"Template catalog updates are disabled, and ${cachePropertiesFile.getAbsolutePath} didn't already exist, so we won't have a working template catalog.")
-      } else if (!indexFile.exists) {
-        log.error(s"We don't have ${indexFile.getAbsolutePath} even though we have ${cachePropertiesFile.getAbsolutePath}, so we won't have a working template catalog.")
+      if (!indexFile.exists) {
+        if (!cachePropertiesFile.exists || !props.cacheIndexHash.isDefined) {
+          if (autoUpdate)
+            log.error(s"We don't have ${cachePropertiesFile.getAbsolutePath} with an index hash in it, so we won't have a working template catalog.")
+          else
+            log.error(s"Template catalog updates are disabled, and ${cachePropertiesFile.getAbsolutePath} didn't already exist with an index hash in it, so we won't have a working template catalog.")
+        } else {
+          log.error(s"We don't have ${indexFile.getAbsolutePath} even though we have ${cachePropertiesFile.getAbsolutePath} with hash ${props.cacheIndexHash.get}, so we won't have a working template catalog.")
+        }
       }
 
       // Now we open the index file.
@@ -166,7 +194,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
       self ! InitializeNormal
     } catch {
       case e: Exception =>
-        log.error("Could not load the template catalog. (${e.getClass.getName}: ${e.getMessage}", e)
+        log.error(e, s"Could not load the template catalog. (${e.getClass.getName}: ${e.getMessage}")
         self ! InitializeFailure(e)
     }
   }

@@ -77,8 +77,11 @@ object DefaultTemplateCache {
       if (!localDir.exists) sys.error(s"Offline mode! Cannot resolve template: $templateId")
       localDir
     }
-    def hasNewIndex(oldId: String): Boolean = false
-    def resolveIndexTo(indexDirOrFile: File): String =
+    def hasNewIndexProperties(oldId: String): Boolean = false
+    def resolveLatestIndexHash(): String = sys.error(s"Offline mode! Can't get latest index hash")
+    def ifNewIndexProperties(currentHash: String)(onNewProperties: CacheProperties => Unit): Unit = ()
+
+    def resolveIndexTo(indexDirOrFile: File, currentHash: String): Unit =
       sys.error("Offline mode! Cannot resolve new index.")
 
     def templateBundleURI(activatorVersion: String,

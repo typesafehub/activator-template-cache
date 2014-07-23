@@ -136,6 +136,9 @@ class DefaultTemplateCacheTest {
       creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
   def makeTestCache(dir: File): Unit = {
+    val cacheProps = new CacheProperties(new File(dir, Constants.CACHE_PROPS_FILENAME))
+    cacheProps.cacheIndexHash = "fakehash-default-template-cache-test"
+    cacheProps.save()
     val writer = LuceneIndexProvider.write(new File(dir, Constants.METADATA_INDEX_FILENAME))
     try {
       writer.insert(template1.persistentConfig)
