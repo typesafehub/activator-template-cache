@@ -136,7 +136,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     catch {
       // Our backup for local-file based testing...
       case ex: RepositoryException =>
-        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
+        log.warning(s"Failed to grab s3 bucket, attempting to use http to '${uri}'. (${ex.msg})")
         download(uri.toURL, toFile)
     }
     toFile
@@ -149,7 +149,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     catch {
       // Our backup for local-file based testing...
       case ex: RepositoryException =>
-        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
+        log.warning(s"Failed to grab s3 bucket, attempting to use http to '${uri}'. (${ex.msg})")
         exists(uri.toURL)
     }
   }
@@ -181,7 +181,9 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
       }
     } catch {
       // In the event of download failure, just assume we don't have a newer index.
-      case NonFatal(e) => false
+      case NonFatal(e) =>
+        log.warning(s"Failed to download new template catalog properties: ${e.getClass.getName}: ${e.getMessage}")
+        false
     }
   }
 
