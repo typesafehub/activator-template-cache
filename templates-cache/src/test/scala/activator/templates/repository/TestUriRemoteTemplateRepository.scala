@@ -15,6 +15,24 @@ import java.net.URI
 import java.util.UUID
 
 class TestUriRemoteTemplateRepository {
+  object stdoutLogger extends akka.event.LoggingAdapter {
+    def getInstance = this
+
+    final override def isErrorEnabled = true
+    final override def isWarningEnabled = true
+    final override def isInfoEnabled = true
+    final override def isDebugEnabled = true
+
+    def log(message: String): Unit = System.out.println(message)
+
+    final protected override def notifyError(message: String): Unit = log(message)
+    final protected override def notifyError(cause: Throwable, message: String): Unit = log(message)
+    final protected override def notifyWarning(message: String): Unit = log(message)
+    final protected override def notifyInfo(message: String): Unit = log(message)
+    final protected override def notifyDebug(message: String): Unit = log(message)
+  }
+  val testLogger = akka.event.NoLogging // = stdoutLogger
+
   // Helper to make a dummy zip file.
   def makeDummyZip(filenamesAndContents: Map[String, String], location: File): Unit = {
     IO.withTestTempDirectory { tmpDir =>
@@ -71,14 +89,14 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo)
 
-      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
-      assertFalse("Failed to find the repository index!", remote.hasNewIndex(hash))
-      assertTrue("Failed to detect new repository index!", remote.hasNewIndex("RANDOM STUFF"))
+      assertFalse("Failed to find the repository index!", remote.hasNewIndexProperties(hash))
+      assertTrue("Failed to detect new repository index!", remote.hasNewIndexProperties("RANDOM STUFF"))
 
       // Now le'ts test downloads...
       val indexDir = new File(tmpDir, "index")
-      remote.resolveIndexTo(indexDir)
+      remote.resolveIndexTo(indexDir, hash)
       val expectedDb = new File(indexDir, "dummy.db")
       assertTrue("Failed to download index file!", expectedDb.exists)
 
@@ -98,11 +116,11 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION - 1)
 
-      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with older binary increment version!",
-        remote.hasNewIndex("RANDOM-INDEX"))
+        remote.hasNewIndexProperties("RANDOM-INDEX"))
     }
   }
 
@@ -114,11 +132,11 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION + 1)
 
-      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertTrue(
         "Failed to pull new index with higher increment version!",
-        remote.hasNewIndex("RANDOM-INDEX"))
+        remote.hasNewIndexProperties("RANDOM-INDEX"))
     }
   }
 
@@ -130,11 +148,11 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION - 1)
 
-      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with older binary major version!",
-        remote.hasNewIndex("RANDOM-INDEX"))
+        remote.hasNewIndexProperties("RANDOM-INDEX"))
     }
   }
 
@@ -146,11 +164,11 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION + 1)
 
-      val remote = new UriRemoteTemplateRepository(repo.toURI, akka.event.NoLogging)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with newer binary major version!",
-        remote.hasNewIndex("RANDOM-INDEX"))
+        remote.hasNewIndexProperties("RANDOM-INDEX"))
     }
   }
 
@@ -158,9 +176,9 @@ class TestUriRemoteTemplateRepository {
   def shouldWorkWithProductionRepo(): Unit = {
     val productionUri = new URI("http://downloads.typesafe.com/typesafe-activator")
 
-    val repo = new UriRemoteTemplateRepository(productionUri, akka.event.NoLogging)
+    val repo = new UriRemoteTemplateRepository(productionUri, testLogger)
 
-    val hasNewIndex = repo.hasNewIndex("RANDOM-INDEX")
+    val hasNewIndex = repo.hasNewIndexProperties("RANDOM-INDEX")
 
     val online = try {
       val connection = productionUri.toURL.openConnection()

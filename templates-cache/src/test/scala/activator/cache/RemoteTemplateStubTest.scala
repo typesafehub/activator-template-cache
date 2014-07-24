@@ -29,17 +29,30 @@ class RemoteTemplateStubTest {
       // TODO - implement?
       localPropsFile
     }
-    def hasNewIndex(currentHash: String): Boolean =
-      FIRST_INDEX_ID == currentHash
+    def hasNewIndexProperties(currentHash: String): Boolean =
+      SECOND_INDEX_ID != currentHash
+
+    def resolveLatestIndexHash(): String =
+      SECOND_INDEX_ID
+
+    def ifNewIndexProperties(currentHash: String)(onNewProperties: CacheProperties => Unit): Unit =
+      if (hasNewIndexProperties(currentHash)) {
+        IO.withTemporaryDirectory { tmpDir =>
+          val propsFile = new File(tmpDir, "index.properties")
+          val props = new CacheProperties(propsFile)
+          props.cacheIndexHash = SECOND_INDEX_ID
+          props.save("saved SECOND_INDEX_ID")
+          onNewProperties(props)
+        }
+      }
 
     // TODO - Actually alter the index and check to see if we have the new one.
     // Preferable with a new template, not in the existing index.
-    def resolveIndexTo(indexDirOrFile: File): String = {
+    def resolveIndexTo(indexDirOrFile: File, currentHash: String): Unit = {
       makeIndex(indexDirOrFile)(
         template1,
         nonLocalTemplate,
         newNonLocalTemplate)
-      SECOND_INDEX_ID
     }
 
     def resolveTemplateTo(templateId: String, localDir: File): File = {
@@ -172,7 +185,7 @@ class RemoteTemplateStubTest {
   def tearDown() {
     // Here we always check to ensure the properties are right....
     val cacheProps = new CacheProperties(new File(cacheDir, Constants.CACHE_PROPS_FILENAME))
-    assertEquals("Failed to download new metadata index!", SECOND_INDEX_ID, cacheProps.cacheIndexHash)
+    assertEquals("Failed to download new metadata index!", Some(SECOND_INDEX_ID), cacheProps.cacheIndexHash)
     system.shutdown()
     IO delete cacheDir
     cacheDir = null

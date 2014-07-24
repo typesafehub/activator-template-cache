@@ -50,7 +50,8 @@ object TemplateCacheSeedGenerator {
         DefaultTemplateCache(
           actorFactory = system,
           location = cacheDir,
-          remote = remoteRepo)
+          remote = remoteRepo,
+          autoUpdate = false)
       val templates =
         for {
           templates <- cache.featured

@@ -22,7 +22,7 @@ case class ResolveTemplateException(msg: String, cause: Throwable) extends Runti
  *
  * TODO - Add a manager in front of this actor that knows how to update the lucene index and reboot this guy.
  */
-class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean = true)
+class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: RemoteTemplateRepository, autoUpdate: Boolean)
   extends Actor with ForwardingExceptions with ActorLogging with Stash {
   import TemplateCacheActor._
 
@@ -47,7 +47,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     case ListFeaturedTemplates => sender ! TemplateQueryResult(listFeaturedTemplates)
   }
 
-  def receiveFailure(e: Exception): Receive = {
+  def receiveFailure(e: Throwable): Receive = {
     case _ => sender ! Status.Failure(e)
   }
 
@@ -92,7 +92,10 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           Some(Template(meta, fileMappings))
         } catch {
           case ex: ResolveTemplateException =>
-            log.error(s"Failed to resolve template: $id from remote repository.")
+            if (ex.getCause ne null)
+              log.warning(s"${ex.getMessage}: ${ex.getCause.getClass.getName}: ${ex.getCause.getMessage}")
+            else
+              log.warning(ex.getMessage)
             None
         }
       case _ => None
@@ -130,34 +133,86 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     }
   }
 
+  // TODO it would be nice to make this a parameter to InitializeNormal
+  // and then pass it around to all the methods
   var index: IndexDb = null
-  var props: CacheProperties = null
 
   override def preStart(): Unit = {
-    try {
-      // Our index is underneath the cache location...
-      props = new CacheProperties(new File(location, Constants.CACHE_PROPS_FILENAME))
-      // Here we check to see if we need to update the local cache.
-      val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
-      // Here we need to not throw...
-      try {
-        if (autoUpdate && remote.hasNewIndex(props.cacheIndexHash)) {
-          val newHash = remote.resolveIndexTo(indexFile)
+    // Our index is underneath the cache location...
+    val cachePropertiesFile = new File(location, Constants.CACHE_PROPS_FILENAME)
+    if (!location.isDirectory() && !location.mkdirs())
+      log.warning(s"Could not create directory ${location}")
+    val props = new CacheProperties(cachePropertiesFile)
+    val indexFile = new File(location, Constants.METADATA_INDEX_FILENAME)
+    val fatalError = try {
+      if (autoUpdate) {
+        remote.ifNewIndexProperties(props.cacheIndexHash.getOrElse("")) { newProps =>
+          val newHash = newProps.cacheIndexHash.getOrElse(throw RepositoryException("No index hash field in downloaded index.properties file", null))
+          // download the new index
+          remote.resolveIndexTo(indexFile, newHash)
+          // if the download succeeds, update our local props
           props.cacheIndexHash = newHash
-          props.save("Updating the local index.")
+          props.save("Updating the local index properties.")
+          log.debug(s"Saved new template index hash ${newHash} to ${props.location.getAbsolutePath}")
         }
-      } catch {
-        case e: RepositoryException => // Ignore, we're in offline mode.
-          log.info("Unable to check remote server for template updates.")
       }
-      // Now we open the index file.
-      index = provider.open(indexFile)
-      self ! InitializeNormal
+
+      // We may have the latest index properties but not have the actual index; this
+      // happens in the seed generator, which requires an index properties to be provided.
+      if (!indexFile.exists) {
+        props.cacheIndexHash foreach { currentHash =>
+          log.info(s"We have index hash ${currentHash} but haven't downloaded that index - attempting to download it now.")
+          remote.resolveIndexTo(indexFile, currentHash)
+        }
+      }
+
+      if (indexFile.exists) {
+        props.cacheIndexHash map { currentHash =>
+          log.debug(s"Updated to latest template catalog ${currentHash}, saved in ${location.getAbsolutePath}")
+        } getOrElse {
+          // this is a little weird but let's go with it
+          log.debug(s"We appear to have a template catalog ${indexFile.getAbsolutePath}, but we don't know its hash")
+        }
+        // if indexFile exists, we can always proceed
+        None
+      } else {
+        // We get here if things are weird: no exception was thrown but we didn't end up downloading an index.
+        // If autoUpdate=true this is probably a bug in our code. If it's false, then it means we have no
+        // cache and also aren't supposed to update to get one, so we are hosed.
+        if (!cachePropertiesFile.exists || !props.cacheIndexHash.isDefined) {
+          if (autoUpdate)
+            Some(RepositoryException(s"We don't have ${cachePropertiesFile.getAbsolutePath} with an index hash in it, even though we should have downloaded one", null))
+          else
+            Some(RepositoryException(s"Template catalog updates are disabled, and ${cachePropertiesFile.getAbsolutePath} didn't already exist with an index hash in it", null))
+        } else {
+          Some(RepositoryException(s"We don't have ${indexFile.getAbsolutePath} even though we have ${cachePropertiesFile.getAbsolutePath} with hash ${props.cacheIndexHash.get}", null))
+        }
+      }
     } catch {
-      case e: Exception =>
-        log.error("Could not initialize TemplateCacheActor - entering failure state", e)
-        self ! InitializeFailure(e)
+      case NonFatal(e) =>
+        // We get here if downloading the properties file or the index itself threw an exception
+        if (indexFile.exists) {
+          log.warning(s"Failed to update template catalog so using the old one (${e.getClass.getName}): ${e.getMessage})")
+          None
+        } else {
+          Some(e)
+        }
     }
+    val noteToSelf: InitializeMessage = fatalError map { e =>
+      log.error(e, s"Could not find a template catalog. (${e.getClass.getName}: ${e.getMessage}")
+      InitializeFailure(e)
+    } getOrElse {
+      // try actually opening the index
+      try {
+        index = provider.open(indexFile)
+        InitializeNormal
+      } catch {
+        case NonFatal(e) =>
+          log.error(e, s"Could not open the template catalog. (${e.getClass.getName}: ${e.getMessage}")
+          InitializeFailure(e)
+      }
+    }
+    self ! noteToSelf
   }
 
   override def postStop(): Unit = {
@@ -179,6 +234,7 @@ object TemplateCacheActor {
   case class TemplateQueryResult(templates: Iterable[TemplateMetadata])
   case class TutorialResult(tutorial: Option[Tutorial])
 
-  case object InitializeNormal
-  case class InitializeFailure(e: Exception)
+  sealed trait InitializeMessage
+  case object InitializeNormal extends InitializeMessage
+  case class InitializeFailure(e: Throwable) extends InitializeMessage
 }
