@@ -58,7 +58,7 @@ object CacheProperties {
       props.cacheIndexBinaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION
       props.cacheIndexHash = hash
       props.cacheIndexSerial = serial
-      props.save(s"Update index to serial serial")
+      props.save(s"Update index to serial $serial")
       file
     }
 }
