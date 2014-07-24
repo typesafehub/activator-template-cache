@@ -6,11 +6,11 @@ import sbt._
 object Dependencies {
   val scalaVersion            = "2.11.1"
   val scalaBinaryVersion      = "2.11"
-  val sbtDependencyVersion    = "0.13.5"
+  val sbtDependencyVersion    = "0.13.6-MSERVER-4"
   val akkaVersion             = "2.3.3"
   val luceneVersion           = "4.3.0"
 
-  val sbtIo                   = "org.scala-sbt"           % "io"                        % sbtDependencyVersion
+  val sbtIo                   = "org.scala-sbt"           %% "io"                       % sbtDependencyVersion
   val commonsCompress         = "org.apache.commons"      % "commons-compress"          % "1.4.1"
   val jgit                    = "org.eclipse.jgit"        % "org.eclipse.jgit.pgm"      % "2.2.0.201212191850-r"
   val akkaActor               = "com.typesafe.akka"       %% "akka-actor"               % akkaVersion
