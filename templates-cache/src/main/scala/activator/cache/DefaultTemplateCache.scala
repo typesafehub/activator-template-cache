@@ -11,15 +11,17 @@ import akka.pattern.ask
 import akka.util.Timeout
 import java.util.UUID
 import java.net.URI
+import scala.util.control.NonFatal
 
 class DefaultTemplateCache(
   actorFactory: ActorRefFactory,
   provider: IndexDbProvider,
   location: File,
-  remote: RemoteTemplateRepository)(
+  remotes: Iterable[RemoteTemplateRepository],
+  autoUpdate: Boolean)(
     implicit timeout: Timeout) extends TemplateCache {
 
-  val handler = actorFactory.actorOf(Props(new TemplateCacheActor(provider, location, remote)), "template-cache")
+  val handler = actorFactory.actorOf(Props(new TemplateCacheActor(provider, location, remotes, autoUpdate = autoUpdate)), "template-cache")
   import actorFactory.dispatcher
   import TemplateCacheActor._
 
@@ -42,17 +44,24 @@ class DefaultTemplateCache(
 }
 
 object DefaultTemplateCache {
+  private val defaultAutoUpdate = try {
+    (System.getProperty("activator.checkForTemplateUpdates", "true")) == "true"
+  } catch {
+    case NonFatal(e) => true
+  }
+
   /** Creates a default template cache for us. */
   def apply(actorFactory: ActorRefFactory,
     location: File,
-    remote: RemoteTemplateRepository = defaultRemoteRepo,
-    seedRepository: Option[File] = None)(
+    remotes: Iterable[RemoteTemplateRepository] = Iterable(defaultRemoteRepo),
+    seedRepository: Option[File] = None,
+    autoUpdate: Boolean = defaultAutoUpdate)(
       implicit timeout: Timeout): TemplateCache = {
     // If we have a seed repository, copy it over.
     seedRepository foreach (repo => ZipInstallHelper.copyLocalCacheIfNeeded(location, repo))
     val indexProvider = LuceneIndexProvider
     // TODO - Copy cache if needed?
-    new DefaultTemplateCache(actorFactory, indexProvider, location, remote)
+    new DefaultTemplateCache(actorFactory, indexProvider, location, remotes, autoUpdate)
   }
 
   /**
@@ -60,6 +69,7 @@ object DefaultTemplateCache {
    *  This is bascially just an offline repository.
    */
   object defaultRemoteRepo extends RemoteTemplateRepository {
+    val name = "default"
     // TODO - Implement me!
     def resolveIndexProperties(localPropsFile: File): File = {
       sys.error(s"Offline mode! Cannot resolve index properties.")
@@ -68,8 +78,11 @@ object DefaultTemplateCache {
       if (!localDir.exists) sys.error(s"Offline mode! Cannot resolve template: $templateId")
       localDir
     }
-    def hasNewIndex(oldId: String): Boolean = false
-    def resolveIndexTo(indexDirOrFile: File): String =
+    def hasNewIndexProperties(oldId: String): Boolean = false
+    def resolveLatestIndexHash(): String = sys.error(s"Offline mode! Can't get latest index hash")
+    def ifNewIndexProperties(currentHash: String)(onNewProperties: CacheProperties => Unit): Unit = ()
+
+    def resolveIndexTo(indexDirOrFile: File, currentHash: String): Unit =
       sys.error("Offline mode! Cannot resolve new index.")
 
     def templateBundleURI(activatorVersion: String,

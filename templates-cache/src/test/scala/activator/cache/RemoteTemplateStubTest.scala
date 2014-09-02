@@ -24,26 +24,39 @@ class RemoteTemplateStubTest {
   var cache: TemplateCache = null
   implicit val timeout = akka.util.Timeout(60 * 1000L)
 
-  object StubRemoteRepository extends RemoteTemplateRepository {
+  class StubRemoteRepository(val name: String, remoteTemplates: TemplateMetadata*) extends RemoteTemplateRepository {
     def resolveIndexProperties(localPropsFile: File): File = {
       // TODO - implement?
       localPropsFile
     }
-    def hasNewIndex(currentHash: String): Boolean =
-      FIRST_INDEX_ID == currentHash
+    def hasNewIndexProperties(currentHash: String): Boolean =
+      SECOND_INDEX_ID != currentHash
+
+    def resolveLatestIndexHash(): String =
+      SECOND_INDEX_ID
+
+    def ifNewIndexProperties(currentHash: String)(onNewProperties: CacheProperties => Unit): Unit =
+      if (hasNewIndexProperties(currentHash)) {
+        IO.withTemporaryDirectory { tmpDir =>
+          val propsFile = new File(tmpDir, "index.properties")
+          val props = new CacheProperties(propsFile)
+          props.cacheIndexHash = SECOND_INDEX_ID
+          props.save("saved SECOND_INDEX_ID")
+          onNewProperties(props)
+        }
+      }
 
     // TODO - Actually alter the index and check to see if we have the new one.
     // Preferable with a new template, not in the existing index.
-    def resolveIndexTo(indexDirOrFile: File): String = {
+    def resolveIndexTo(indexDirOrFile: File, currentHash: String): Unit = {
       makeIndex(indexDirOrFile)(
         template1,
-        nonLocalTemplate,
+        nonLocalTypesafeTemplate,
         newNonLocalTemplate)
-      SECOND_INDEX_ID
     }
 
     def resolveTemplateTo(templateId: String, localDir: File): File = {
-      if (nonLocalTemplate.id == templateId || newNonLocalTemplate.id == templateId) {
+      if (remoteTemplates.exists(_.id == templateId)) {
         // Fake Resolving a remote template
         if (!localDir.exists) IO.createDirectory(localDir)
         IO.write(new File(localDir, "build2.sbt"), """name := "Test2" """)
@@ -73,13 +86,16 @@ class RemoteTemplateStubTest {
   def setup() {
     cacheDir = IO.createTemporaryDirectory
     // TODO - Create an cache...
-    makeTestCache(cacheDir)
+    makeTestCache(cacheDir, "typesafe-test")
+    makeIndex(new File(cacheDir, s"${Constants.METADATA_INDEX_FILENAME}.private-test"))(nonLocalPrivateTemplate)
     system = ActorSystem()
     // TODO - stub out remote repo
     cache = DefaultTemplateCache(
       actorFactory = system,
       location = cacheDir,
-      remote = StubRemoteRepository)
+      remotes = Iterable(
+        new StubRemoteRepository("typesafe-test", template1, nonLocalTypesafeTemplate, newNonLocalTemplate),
+        new StubRemoteRepository("private-test", nonLocalPrivateTemplate)))
   }
 
   @Test
@@ -97,9 +113,20 @@ class RemoteTemplateStubTest {
   @Test
   def resolveRemoteTemplate(): Unit = {
     val template =
-      Await.result(cache.template(nonLocalTemplate.id), Duration(3, MINUTES))
+      Await.result(cache.template(nonLocalTypesafeTemplate.id), Duration(3, MINUTES))
     assertTrue(template.isDefined)
-    assertEquals(template.get.metadata, resolvedNonLocalTemplate)
+    assertEquals(template.get.metadata, resolvedNonLocalTypesafeTemplate)
+    val hasBuildSbt = template.get.files exists {
+      case (file, name) => name == "build2.sbt"
+    }
+    assertTrue("Failed to find template files!", hasBuildSbt)
+  }
+
+  @Test
+  def resolvePrivateRemoteTemplate(): Unit = {
+    val template = Await.result(cache.template(nonLocalPrivateTemplate.id), Duration(3, MINUTES))
+    assertTrue(template.isDefined)
+    assertEquals(template.get.metadata, resolvedNonLocalPrivateTemplate)
     val hasBuildSbt = template.get.files exists {
       case (file, name) => name == "build2.sbt"
     }
@@ -134,7 +161,7 @@ class RemoteTemplateStubTest {
       Await.result(cache.metadata, Duration(3, MINUTES))
     val hasMetadata = metadata exists { _ == template1 }
     assertTrue("Failed to find metadata!", hasMetadata)
-    val hasRemote = metadata exists { _ == nonLocalTemplate }
+    val hasRemote = metadata exists { _ == nonLocalTypesafeTemplate }
     assertTrue("Failed to find non-local template!", hasRemote)
 
     val hasNewRemote = metadata exists { _ == newNonLocalTemplate }
@@ -147,7 +174,7 @@ class RemoteTemplateStubTest {
       Await.result(cache.featured, Duration(3, MINUTES))
     val hasMetadata = metadata exists { _ == template1 }
     assertTrue("Failed to find metadata!", hasMetadata)
-    assertFalse("Featured metadata has unfeatured template.", metadata.exists(_ == nonLocalTemplate))
+    assertFalse("Featured metadata has unfeatured template.", metadata.exists(_ == nonLocalTypesafeTemplate))
     val hasNewRemote = metadata exists { _ == newNonLocalTemplate }
     assertTrue("Failed to find new non-local template!", hasNewRemote)
   }
@@ -172,7 +199,7 @@ class RemoteTemplateStubTest {
   def tearDown() {
     // Here we always check to ensure the properties are right....
     val cacheProps = new CacheProperties(new File(cacheDir, Constants.CACHE_PROPS_FILENAME))
-    assertEquals("Failed to download new metadata index!", SECOND_INDEX_ID, cacheProps.cacheIndexHash)
+    assertEquals("Failed to download new metadata index!", Some(SECOND_INDEX_ID), cacheProps.cacheIndexHash)
     system.shutdown()
     IO delete cacheDir
     cacheDir = null
@@ -199,7 +226,7 @@ class RemoteTemplateStubTest {
       creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = true)
 
-  val nonLocalTemplate = TemplateMetadata(
+  val nonLocalTypesafeTemplate = TemplateMetadata(
     IndexStoredTemplateMetadata(
       id = "ID-2",
       timeStamp = 1L,
@@ -220,8 +247,8 @@ class RemoteTemplateStubTest {
       creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
 
-  val resolvedNonLocalTemplate =
-    nonLocalTemplate.copy(locallyCached = true)
+  val resolvedNonLocalTypesafeTemplate =
+    nonLocalTypesafeTemplate.copy(locallyCached = true)
 
   val newNonLocalTemplate = TemplateMetadata(
     IndexStoredTemplateMetadata(
@@ -244,6 +271,30 @@ class RemoteTemplateStubTest {
       creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
 
+  val nonLocalPrivateTemplate = TemplateMetadata(
+    IndexStoredTemplateMetadata(
+      id = "ID-4",
+      timeStamp = 1L,
+      featured = false,
+      usageCount = None,
+      name = "test-remote-private-template",
+      title = "A Testing Template that is not dowloaded from a private repo",
+      description = "A template that tests template existentialism.",
+      authorName = "Jim Bob",
+      authorLink = "http://example.com/jimbob/",
+      tags = Seq("test", "template"),
+      templateTemplate = true,
+      sourceLink = "http://example.com/source",
+      authorLogo = Some("http://example.com/logo.png"),
+      authorBio = Some("Blah blah blah blah"),
+      authorTwitter = Some("blah"),
+      category = TemplateMetadata.Category.COMPANY,
+      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
+    locallyCached = false)
+
+  val resolvedNonLocalPrivateTemplate =
+    nonLocalPrivateTemplate.copy(locallyCached = true)
+
   val resolvedNewNonLocalTemplate =
     newNonLocalTemplate.copy(locallyCached = true)
 
@@ -254,10 +305,10 @@ class RemoteTemplateStubTest {
     finally writer.close()
   }
 
-  def makeTestCache(dir: File): Unit = {
-    makeIndex(new File(dir, Constants.METADATA_INDEX_FILENAME))(
+  def makeTestCache(dir: File, repoName: String): Unit = {
+    makeIndex(new File(dir, s"${Constants.METADATA_INDEX_FILENAME}.$repoName"))(
       template1,
-      nonLocalTemplate)
+      nonLocalTypesafeTemplate)
     // Now we create our files:
     val templateDir = new File(dir, "ID-1")
     IO createDirectory templateDir

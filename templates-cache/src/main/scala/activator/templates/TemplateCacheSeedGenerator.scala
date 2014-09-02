@@ -13,18 +13,23 @@ import java.net.URI
 /** This is a class that can be used within an sbt build to seed an Activator installation with pre-fetched templates and index.*/
 object TemplateCacheSeedGenerator {
 
+  case class RepositoryArgument(remoteName: String, remoteUri: URI)
+
   case class Arguments(
     localDirectory: File = new File("cache-repo"),
-    remoteUri: URI = new URI("http://downloads.typesafe.com/typesafe-activator"))
+    remoteRepos: Iterable[RepositoryArgument] = Iterable(RepositoryArgument("typesafe", new URI("http://downloads.typesafe.com/typesafe-activator"))))
 
   def parseUsage(args: Array[String]): Arguments = {
     def parseImpl(args: Arguments, remaining: List[String]): Arguments =
       remaining match {
-        case "-remote" :: remoteUri :: rest => parseImpl(args.copy(remoteUri = new URI(remoteUri)), rest)
+        case "-remote" :: remoteName :: remoteUri :: rest =>
+          parseImpl(args.copy(remoteRepos = args.remoteRepos ++ Iterable(RepositoryArgument(remoteName, new URI(remoteUri)))), rest)
+
         case file :: Nil => args.copy(localDirectory = new File(file))
+
         case unknown =>
           sys.error(s"""Unknown argument: $unknown
-            Usage:  TemplateCacheSeedGenerator (-remote <uri>) <cache directory>
+            Usage:  TemplateCacheSeedGenerator (-remote <repo name> <uri>)... <cache directory>
           """)
       }
     parseImpl(Arguments(), args.toList)
@@ -32,7 +37,10 @@ object TemplateCacheSeedGenerator {
 
   def main(args: Array[String]): Unit = {
     // TODO - Actually parse stuff
-    val arg = parseUsage(args)
+    buildCaches(parseUsage(args))
+  }
+
+  def buildCaches(arg: Arguments) = {
     // TODO - Read in config for this.
     val cacheDir = arg.localDirectory
     // TODO - Pull this from config?
@@ -40,7 +48,7 @@ object TemplateCacheSeedGenerator {
 
     val system = akka.actor.ActorSystem()
 
-    val remoteRepo = new repository.UriRemoteTemplateRepository(arg.remoteUri, system.log)
+    val remoteRepos = arg.remoteRepos.map(r => new repository.UriRemoteTemplateRepository(r.remoteName, r.remoteUri, system.log))
 
     // For futures
     implicit val ctx = system.dispatcher
@@ -50,7 +58,8 @@ object TemplateCacheSeedGenerator {
         DefaultTemplateCache(
           actorFactory = system,
           location = cacheDir,
-          remote = remoteRepo)
+          remotes = remoteRepos,
+          autoUpdate = false)
       val templates =
         for {
           templates <- cache.featured
@@ -59,4 +68,5 @@ object TemplateCacheSeedGenerator {
       Await.result(templates, duration)
     } finally system.shutdown()
   }
+
 }

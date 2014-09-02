@@ -172,7 +172,7 @@ class LuceneIndex(dirName: File, dir: Directory) extends IndexDb {
   // TODO - Figure out which fields we care about...
   val parser = new MultiFieldQueryParser(LUCENE_VERSION,
     Array(FIELD_TITLE, FIELD_DESC, FIELD_TAGS, FIELD_NAME),
-    analyzer);
+    analyzer)
 
   def template(id: String): Option[IndexStoredTemplateMetadata] =
     executeQuery(new TermQuery(new Term(FIELD_ID, id)), 1).headOption
@@ -199,7 +199,7 @@ class LuceneIndex(dirName: File, dir: Directory) extends IndexDb {
 
   // Helper which actually runs queries on the local index.
   private def executeQuery(query: lucene.search.Query, max: Int): Iterable[IndexStoredTemplateMetadata] = {
-    val results = searcher.search(query, if (max == 0) reader.maxDoc else max)
+    val results = searcher.search(query, if (max == 0) math.max(reader.maxDoc, 1) else max)
     results.scoreDocs map { doc =>
       val document = reader.document(doc.doc)
       documentToMetadata(document)

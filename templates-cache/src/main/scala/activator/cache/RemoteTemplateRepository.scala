@@ -12,6 +12,10 @@ import java.net.URI
 
 trait RemoteTemplateRepository {
   /**
+   * A unique identifier for the remote template repository
+   */
+  def name: String
+  /**
    * Downloads a remote template into the given local directory.
    *
    * Throws on any error or if template ids do not exist.
@@ -19,23 +23,39 @@ trait RemoteTemplateRepository {
   def resolveTemplateTo(templateId: String, localDir: File): File
 
   /**
-   * Downloads the current inex properties into
+   * Downloads the current index properties into the given file
    */
   def resolveIndexProperties(localPropsFile: File): File
+
   /**
    * Checks to see if there's a new index in the remote repository
    * @param currentHash - The old identifier for the index file.
    */
-  def hasNewIndex(currentHash: String): Boolean
+  def hasNewIndexProperties(currentHash: String): Boolean
 
   /**
-   * Resolves the new remote index file to the local index directory.
+   * Downloads the latest index hash (throws an exception if
+   *  it can't get one or it isn't compatible).
+   */
+  def resolveLatestIndexHash(): String
+
+  /**
+   * Checks to see if there's a new index in the remote repository,
+   * calling the callback with the new index properties if there is one.
+   * The callback runs synchronously while the index file still exists,
+   * and the file is deleted afterwards.
+   * @param currentHash - The old identifier for the index file.
+   */
+  def ifNewIndexProperties(currentHash: String)(onNewProperties: CacheProperties => Unit): Unit
+
+  /**
+   * Resolves a remote index file to the local index directory.
    * @param indexDirOrFile - The directory or file location where the new index
    *   should be written.
+   * @param indexHash - Which index to get.
    *
-   * @return The new hash of the index.
    */
-  def resolveIndexTo(indexDirOrFile: File): String
+  def resolveIndexTo(indexDirOrFile: File, indexHash: String): Unit
 
   /**
    * Calculates the URI where we would find or publish a bundled
@@ -73,6 +93,8 @@ object RemoteTemplateRepository {
     // TODO - Make sure this is the right way to do it from HAVOC.
     // TODO - Error handling of some form?
     new templates.repository.UriRemoteTemplateRepository(
-      new java.net.URI(config.getString("activator.template.remote.url")), log)
+      config.getString("activator.template.remote.name"),
+      new java.net.URI(config.getString("activator.template.remote.url")),
+      log)
   }
 }

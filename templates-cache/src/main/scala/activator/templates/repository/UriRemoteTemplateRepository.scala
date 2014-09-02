@@ -27,7 +27,7 @@ import com.amazonaws.AmazonServiceException
  *  IO.download function to pull down URIs.  So, pretty much just simple HTTP
  *  downloads or local file copies are supported.
  */
-class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends RemoteTemplateRepository {
+class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapter) extends RemoteTemplateRepository {
   protected val layout = new Layout(base)
 
   // wrapper around IO.download that logs what's happening
@@ -136,7 +136,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     catch {
       // Our backup for local-file based testing...
       case ex: RepositoryException =>
-        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
+        log.warning(s"Failed to grab s3 bucket, attempting to use http to '${uri}'. (${ex.msg})")
         download(uri.toURL, toFile)
     }
     toFile
@@ -149,7 +149,7 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     catch {
       // Our backup for local-file based testing...
       case ex: RepositoryException =>
-        log.info(s"Failed to grab s3 bucket, attempting to hit HTTP server. ${ex.msg}")
+        log.warning(s"Failed to grab s3 bucket, attempting to use http to '${uri}'. (${ex.msg})")
         exists(uri.toURL)
     }
   }
@@ -168,7 +168,24 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
     localDir
   }
 
-  def hasNewIndex(currentHash: String): Boolean = {
+  def hasNewIndexProperties(currentHash: String): Boolean = {
+    downloadNewIndexProperties(currentHash)(_ => true)(_ => false)
+  }
+
+  def resolveLatestIndexHash(): String = {
+    downloadNewIndexProperties("") {
+      props => props.cacheIndexHash.getOrElse(throw RepositoryException("index properties file didn't have a hash in it", null))
+    } { optionalThrowable =>
+      optionalThrowable.map(throw _).getOrElse(throw RepositoryException("Unable to download latest index hash", null))
+    }
+  }
+
+  def ifNewIndexProperties(currentHash: String)(onNewIndex: CacheProperties => Unit): Unit = {
+    downloadNewIndexProperties(currentHash)(onNewIndex)(_ => ())
+  }
+
+  // use currentHash = "" to always download
+  private def downloadNewIndexProperties[T](currentHash: String)(onNewIndex: CacheProperties => T)(onNotNewIndex: Option[Throwable] => T): T = {
     try {
       IO.withTemporaryDirectory { tmpDir =>
         val indexProps = new File(tmpDir, "index.properties")
@@ -176,28 +193,41 @@ class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends Remote
         val props = new CacheProperties(indexProps)
         def recentEnough = props.cacheIndexBinaryMajorVersion == Constants.INDEX_BINARY_MAJOR_VERSION &&
           props.cacheIndexBinaryIncrementVersion >= Constants.INDEX_BINARY_INCREMENT_VERSION
-        def differentCache = props.cacheIndexHash != currentHash
-        differentCache && recentEnough
+        val newHash = props.cacheIndexHash.getOrElse(throw RepositoryException("Downloaded catalog properties didn't contain a new index hash", null))
+        def differentCache = newHash != currentHash
+        if (differentCache && recentEnough) {
+          log.debug(s"Found a new template catalog with hash ${newHash} (we had ${currentHash} before)")
+          onNewIndex(props)
+        } else {
+          if (differentCache) {
+            // throw in this case so there's an error message
+            throw RepositoryException(s"Template catalog has been updated, but we can only use catalogs with version ${Constants.INDEX_BINARY_MAJOR_VERSION}.${Constants.INDEX_BINARY_INCREMENT_VERSION} and we found ${props.cacheIndexBinaryMajorVersion}.${props.cacheIndexBinaryIncrementVersion}", null)
+          } else {
+            log.debug(s"Template catalog is unchanged since we last downloaded it, we already have ${currentHash}.")
+            onNotNewIndex(None)
+          }
+        }
       }
     } catch {
       // In the event of download failure, just assume we don't have a newer index.
-      case NonFatal(e) => false
+      case NonFatal(e) =>
+        log.warning(s"Failed to download new template catalog properties: ${e.getClass.getName}: ${e.getMessage}")
+        onNotNewIndex(Some(e))
     }
   }
 
-  def resolveIndexTo(indexDirOrFile: File): String = {
+  def resolveIndexTo(indexDirOrFile: File, indexHash: String): Unit = {
     IO.withTemporaryDirectory { tmpDir =>
-      val indexProps = new File(tmpDir, "index.properties")
-      // TODO - Don't redownload this sucker...
-      resolveIndexProperties(indexProps)
-      val props = new CacheProperties(indexProps)
       val indexZip = new File(tmpDir, "index.zip")
-      download(layout.index(props.cacheIndexHash).toURL, indexZip)
+      val url = layout.index(indexHash).toURL
+      download(url, indexZip)
       val zipHash = activator.hashing.hash(indexZip)
+      if (zipHash != indexHash)
+        throw RepositoryException(s"Expected hash of ${url} to be ${indexHash} but it was ${zipHash}", null)
+
       IO.createViaTemporary(indexDirOrFile) { indexExpanded =>
         IO.unzip(indexZip, indexExpanded)
       }
-      zipHash
     }
   }
 

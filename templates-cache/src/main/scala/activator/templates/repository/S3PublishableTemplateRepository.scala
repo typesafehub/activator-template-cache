@@ -21,8 +21,8 @@ import com.amazonaws.services.s3.model.ObjectMetadata
 /**
  * This class can publish and and read from the S3 Repository.
  */
-class S3PublishableTemplateRepository(log: akka.event.LoggingAdapter, baseUri: URI, username: String, passwd: String)
-  extends UriRemoteTemplateRepository(baseUri, log)
+class S3PublishableTemplateRepository(name: String, log: akka.event.LoggingAdapter, baseUri: URI, username: String, passwd: String)
+  extends UriRemoteTemplateRepository(name, baseUri, log)
   with PublishableTemplateRepository {
 
   protected override def makeClient(): AmazonS3Client = {
