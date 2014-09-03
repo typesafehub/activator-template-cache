@@ -50,12 +50,12 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remotes: Ite
     case ListFeaturedTemplates => sender ! TemplateQueryResult(listFeaturedTemplates)
   }
 
-  def listTemplates = indexes.values.flatMap(value => fillMetadata(value._1.metadata))
-  def listFeaturedTemplates = indexes.values.flatMap(value => fillMetadata(value._1.featured))
-
   def receiveFailure(e: Throwable): Receive = {
     case _ => sender ! Status.Failure(e)
   }
+
+  def listTemplates = indexes.values.flatMap(value => fillMetadata(value._1.metadata))
+  def listFeaturedTemplates = indexes.values.flatMap(value => fillMetadata(value._1.featured))
 
   def searchTemplates(query: String, max: Int): Iterable[TemplateMetadata] =
     indexes.values.flatMap(value => fillMetadata(value._1.search(query, max)))
