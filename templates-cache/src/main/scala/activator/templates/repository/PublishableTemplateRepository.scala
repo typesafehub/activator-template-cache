@@ -60,10 +60,9 @@ trait PublishableTemplateRepository extends RemoteTemplateRepository {
 }
 object PublishableTemplateRepository {
   def apply(config: Config, log: akka.event.LoggingAdapter): PublishableTemplateRepository = {
-    val name = config.getString("activator.template.remote.name")
     val uri = new java.net.URI(config.getString("activator.template.remote.url"))
     val username = config.getString("activator.template.remote.user")
     val passwd = config.getString("activator.template.remote.password")
-    new S3PublishableTemplateRepository(name, log, uri, username, passwd)
+    new S3PublishableTemplateRepository(log, uri, username, passwd)
   }
 }

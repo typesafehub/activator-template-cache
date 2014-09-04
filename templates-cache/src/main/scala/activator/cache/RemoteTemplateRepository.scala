@@ -12,7 +12,7 @@ import java.net.URI
 
 trait RemoteTemplateRepository {
   /**
-   * A unique identifier for the remote template repository
+   * A url-friendly unique identifier for the remote template repository
    */
   def name: String
   /**
@@ -93,7 +93,6 @@ object RemoteTemplateRepository {
     // TODO - Make sure this is the right way to do it from HAVOC.
     // TODO - Error handling of some form?
     new templates.repository.UriRemoteTemplateRepository(
-      config.getString("activator.template.remote.name"),
       new java.net.URI(config.getString("activator.template.remote.url")),
       log)
   }

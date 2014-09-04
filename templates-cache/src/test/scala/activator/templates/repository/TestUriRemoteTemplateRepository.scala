@@ -13,6 +13,8 @@ import org.junit._
 import Assert._
 import java.net.URI
 
+import scala.util.Random
+
 class TestUriRemoteTemplateRepository {
   object stdoutLogger extends akka.event.LoggingAdapter {
     def getInstance = this
@@ -74,6 +76,7 @@ class TestUriRemoteTemplateRepository {
       cacheProps.cacheIndexHash = hash
       cacheProps.cacheIndexBinaryMajorVersion = binaryMajorVersion
       cacheProps.cacheIndexBinaryIncrementVersion = binaryIncrementVersion
+      cacheProps.catalogName = Random.nextString(10)
       cacheProps.save("Updated hash")
     }
     val template1Location = paths.template(template1Id)
@@ -88,7 +91,7 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo)
 
-      val remote = new UriRemoteTemplateRepository("test", repo.toURI, testLogger)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse("Failed to find the repository index!", remote.hasNewIndexProperties(hash))
       assertTrue("Failed to detect new repository index!", remote.hasNewIndexProperties("RANDOM STUFF"))
@@ -115,7 +118,7 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION - 1)
 
-      val remote = new UriRemoteTemplateRepository("test", repo.toURI, testLogger)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with older binary increment version!",
@@ -131,7 +134,7 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryIncrementVersion = Constants.INDEX_BINARY_INCREMENT_VERSION + 1)
 
-      val remote = new UriRemoteTemplateRepository("test", repo.toURI, testLogger)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertTrue(
         "Failed to pull new index with higher increment version!",
@@ -147,7 +150,7 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION - 1)
 
-      val remote = new UriRemoteTemplateRepository("test", repo.toURI, testLogger)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with older binary major version!",
@@ -163,7 +166,7 @@ class TestUriRemoteTemplateRepository {
       IO.createDirectory(repo)
       makeRepo(repo, binaryMajorVersion = Constants.INDEX_BINARY_MAJOR_VERSION + 1)
 
-      val remote = new UriRemoteTemplateRepository("test", repo.toURI, testLogger)
+      val remote = new UriRemoteTemplateRepository(repo.toURI, testLogger)
       // Now let's download and check stuff.
       assertFalse(
         "Cannot pull an index with newer binary major version!",
@@ -175,7 +178,7 @@ class TestUriRemoteTemplateRepository {
   def shouldWorkWithProductionRepo(): Unit = {
     val productionUri = new URI("http://downloads.typesafe.com/typesafe-activator")
 
-    val repo = new UriRemoteTemplateRepository("typesafe", productionUri, testLogger)
+    val repo = new UriRemoteTemplateRepository(productionUri, testLogger)
 
     val hasNewIndex = repo.hasNewIndexProperties("RANDOM-INDEX")
 

@@ -4,6 +4,7 @@
 package activator
 package cache
 
+import akka.event.LoggingAdapter
 import sbt.IO
 import java.io.File
 /**
@@ -19,6 +20,11 @@ class CacheProperties(val location: java.io.File) {
   def cacheIndexHash: Option[String] = Option(props.getProperty(Constants.CACHE_HASH_PROPERTY)) filter (_.trim() != "")
   def cacheIndexHash_=(newId: String) = {
     props.setProperty(Constants.CACHE_HASH_PROPERTY, newId)
+  }
+
+  def catalogName: Option[String] = Option(props.getProperty(Constants.CATALOG_METADATA_NAME)) filter (_.trim() != "")
+  def catalogName_=(newName: String) = {
+    props.setProperty(Constants.CATALOG_METADATA_NAME, newName)
   }
 
   def cacheIndexBinaryMajorVersion =
@@ -49,6 +55,20 @@ class CacheProperties(val location: java.io.File) {
 
 object CacheProperties {
   def default(cacheDir: java.io.File) = new CacheProperties(new java.io.File(cacheDir, Constants.CACHE_PROPS_FILENAME))
+
+  def propertiesFileForRepository(cacheDir: java.io.File, repoName: String, log: LoggingAdapter) = {
+    if (!cacheDir.isDirectory && !cacheDir.mkdirs())
+      log.warning(s"Could not create directory $cacheDir")
+    val parentDirectory = new java.io.File(cacheDir, repoName)
+    if (!parentDirectory.isDirectory && !parentDirectory.mkdirs())
+      log.warning(s"Could not create directory $parentDirectory")
+    new java.io.File(parentDirectory, Constants.CACHE_PROPS_FILENAME)
+  }
+
+  def indexFileForRepository(cacheDir: java.io.File, repoName: String) = {
+    val parentDirectory = new java.io.File(cacheDir, repoName)
+    new File(parentDirectory, Constants.METADATA_INDEX_FILENAME)
+  }
 
   // TODO - Does this belong here?
   def write(file: File, serial: Long, hash: String): ProcessResult[File] =

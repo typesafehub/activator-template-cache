@@ -22,7 +22,7 @@ class RemoteTemplateStubTest {
   var cacheDir: File = null
   var system: ActorSystem = null
   var cache: TemplateCache = null
-  implicit val timeout = akka.util.Timeout(60 * 1000L)
+  implicit val timeout = akka.util.Timeout(1, MINUTES)
 
   class StubRemoteRepository(val name: String, remoteTemplates: TemplateMetadata*) extends RemoteTemplateRepository {
     def resolveIndexProperties(localPropsFile: File): File = {
@@ -38,9 +38,10 @@ class RemoteTemplateStubTest {
     def ifNewIndexProperties(currentHash: String)(onNewProperties: CacheProperties => Unit): Unit =
       if (hasNewIndexProperties(currentHash)) {
         IO.withTemporaryDirectory { tmpDir =>
-          val propsFile = new File(tmpDir, "index.properties")
+          val propsFile = new File(new File(tmpDir, name), "index.properties")
           val props = new CacheProperties(propsFile)
           props.cacheIndexHash = SECOND_INDEX_ID
+          props.catalogName = name
           props.save("saved SECOND_INDEX_ID")
           onNewProperties(props)
         }
@@ -49,10 +50,7 @@ class RemoteTemplateStubTest {
     // TODO - Actually alter the index and check to see if we have the new one.
     // Preferable with a new template, not in the existing index.
     def resolveIndexTo(indexDirOrFile: File, currentHash: String): Unit = {
-      makeIndex(indexDirOrFile)(
-        template1,
-        nonLocalTypesafeTemplate,
-        newNonLocalTemplate)
+      makeIndex(indexDirOrFile)(remoteTemplates: _*)
     }
 
     def resolveTemplateTo(templateId: String, localDir: File): File = {
@@ -87,13 +85,13 @@ class RemoteTemplateStubTest {
     cacheDir = IO.createTemporaryDirectory
     // TODO - Create an cache...
     makeTestCache(cacheDir, "typesafe-test")
-    makeIndex(new File(cacheDir, s"${Constants.METADATA_INDEX_FILENAME}.private-test"))(nonLocalPrivateTemplate)
+    makeIndex(CacheProperties.indexFileForRepository(cacheDir, "private-test"))(nonLocalPrivateTemplate)
     system = ActorSystem()
     // TODO - stub out remote repo
     cache = DefaultTemplateCache(
       actorFactory = system,
-      location = cacheDir,
-      remotes = Iterable(
+      baseDir = cacheDir,
+      remotes = IndexedSeq(
         new StubRemoteRepository("typesafe-test", template1, nonLocalTypesafeTemplate, newNonLocalTemplate),
         new StubRemoteRepository("private-test", nonLocalPrivateTemplate)))
   }
@@ -198,7 +196,7 @@ class RemoteTemplateStubTest {
   @After
   def tearDown() {
     // Here we always check to ensure the properties are right....
-    val cacheProps = new CacheProperties(new File(cacheDir, Constants.CACHE_PROPS_FILENAME))
+    val cacheProps = new CacheProperties(new File(new File(cacheDir, "typesafe-test"), Constants.CACHE_PROPS_FILENAME))
     assertEquals("Failed to download new metadata index!", Some(SECOND_INDEX_ID), cacheProps.cacheIndexHash)
     system.shutdown()
     IO delete cacheDir
@@ -305,11 +303,10 @@ class RemoteTemplateStubTest {
     finally writer.close()
   }
 
-  def makeTestCache(dir: File, repoName: String): Unit = {
-    makeIndex(new File(dir, s"${Constants.METADATA_INDEX_FILENAME}.$repoName"))(
-      template1,
-      nonLocalTypesafeTemplate)
+  def makeTestCache(baseDir: File, repoName: String): Unit = {
+    makeIndex(CacheProperties.indexFileForRepository(baseDir, repoName))(template1, nonLocalTypesafeTemplate)
     // Now we create our files:
+    val dir = new File(baseDir, repoName)
     val templateDir = new File(dir, "ID-1")
     IO createDirectory templateDir
     IO.write(new File(templateDir, "build.sbt"), """name := "Test" """)
@@ -318,6 +315,7 @@ class RemoteTemplateStubTest {
     IO.write(new File(tutorialDir, "index.html"), "<html></html>")
     val cacheProps = new CacheProperties(new File(dir, Constants.CACHE_PROPS_FILENAME))
     cacheProps.cacheIndexHash = FIRST_INDEX_ID
+    cacheProps.catalogName = repoName
     cacheProps.save()
   }
 }

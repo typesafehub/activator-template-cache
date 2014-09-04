@@ -16,12 +16,12 @@ import scala.util.control.NonFatal
 class DefaultTemplateCache(
   actorFactory: ActorRefFactory,
   provider: IndexDbProvider,
-  location: File,
-  remotes: Iterable[RemoteTemplateRepository],
+  baseDir: File,
+  remotes: IndexedSeq[RemoteTemplateRepository],
   autoUpdate: Boolean)(
     implicit timeout: Timeout) extends TemplateCache {
 
-  val handler = actorFactory.actorOf(Props(new TemplateCacheActor(provider, location, remotes, autoUpdate = autoUpdate)), "template-cache")
+  val handler = actorFactory.actorOf(Props(new TemplateCacheActor(provider, baseDir, remotes, autoUpdate = autoUpdate)), "template-cache")
   import actorFactory.dispatcher
   import TemplateCacheActor._
 
@@ -52,16 +52,16 @@ object DefaultTemplateCache {
 
   /** Creates a default template cache for us. */
   def apply(actorFactory: ActorRefFactory,
-    location: File,
-    remotes: Iterable[RemoteTemplateRepository] = Iterable(defaultRemoteRepo),
+    baseDir: File,
+    remotes: IndexedSeq[RemoteTemplateRepository] = IndexedSeq(defaultRemoteRepo),
     seedRepository: Option[File] = None,
     autoUpdate: Boolean = defaultAutoUpdate)(
       implicit timeout: Timeout): TemplateCache = {
     // If we have a seed repository, copy it over.
-    seedRepository foreach (repo => ZipInstallHelper.copyLocalCacheIfNeeded(location, repo))
+    seedRepository foreach (repo => ZipInstallHelper.copyLocalCacheIfNeeded(baseDir, repo))
     val indexProvider = LuceneIndexProvider
     // TODO - Copy cache if needed?
-    new DefaultTemplateCache(actorFactory, indexProvider, location, remotes, autoUpdate)
+    new DefaultTemplateCache(actorFactory, indexProvider, baseDir, remotes, autoUpdate)
   }
 
   /**

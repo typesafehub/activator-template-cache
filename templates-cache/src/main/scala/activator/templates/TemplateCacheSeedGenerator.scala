@@ -13,17 +13,15 @@ import java.net.URI
 /** This is a class that can be used within an sbt build to seed an Activator installation with pre-fetched templates and index.*/
 object TemplateCacheSeedGenerator {
 
-  case class RepositoryArgument(remoteName: String, remoteUri: URI)
-
   case class Arguments(
     localDirectory: File = new File("cache-repo"),
-    remoteRepos: Iterable[RepositoryArgument] = Iterable(RepositoryArgument("typesafe", new URI("http://downloads.typesafe.com/typesafe-activator"))))
+    remoteRepos: IndexedSeq[URI] = IndexedSeq(new URI("http://downloads.typesafe.com/typesafe-activator")))
 
   def parseUsage(args: Array[String]): Arguments = {
     def parseImpl(args: Arguments, remaining: List[String]): Arguments =
       remaining match {
         case "-remote" :: remoteName :: remoteUri :: rest =>
-          parseImpl(args.copy(remoteRepos = args.remoteRepos ++ Iterable(RepositoryArgument(remoteName, new URI(remoteUri)))), rest)
+          parseImpl(args.copy(remoteRepos = args.remoteRepos ++ IndexedSeq(new URI(remoteUri))), rest)
 
         case file :: Nil => args.copy(localDirectory = new File(file))
 
@@ -48,7 +46,7 @@ object TemplateCacheSeedGenerator {
 
     val system = akka.actor.ActorSystem()
 
-    val remoteRepos = arg.remoteRepos.map(r => new repository.UriRemoteTemplateRepository(r.remoteName, r.remoteUri, system.log))
+    val remoteRepos = arg.remoteRepos.map(r => new repository.UriRemoteTemplateRepository(r, system.log))
 
     // For futures
     implicit val ctx = system.dispatcher
@@ -57,7 +55,7 @@ object TemplateCacheSeedGenerator {
       val cache =
         DefaultTemplateCache(
           actorFactory = system,
-          location = cacheDir,
+          baseDir = cacheDir,
           remotes = remoteRepos,
           autoUpdate = false)
       val templates =

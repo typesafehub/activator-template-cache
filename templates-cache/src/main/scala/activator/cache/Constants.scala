@@ -52,4 +52,7 @@ object Constants {
   // require the latest format and cannot handle an older one. If new versions can
   // still use the old index format, there's no need to increment this.
   val INDEX_BINARY_INCREMENT_VERSION = 0
+
+  // Repository metadata properties
+  val CATALOG_METADATA_NAME = "catalog.name"
 }

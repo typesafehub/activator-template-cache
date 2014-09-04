@@ -19,7 +19,6 @@ import com.amazonaws.services.s3.model.{ GetObjectRequest, GetObjectMetadataRequ
 import akka.event.LoggingAdapter
 import java.util.UUID
 import java.net.HttpURLConnection
-import com.amazonaws.AmazonClientException
 import com.amazonaws.AmazonServiceException
 
 /**
@@ -27,28 +26,36 @@ import com.amazonaws.AmazonServiceException
  *  IO.download function to pull down URIs.  So, pretty much just simple HTTP
  *  downloads or local file copies are supported.
  */
-class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapter) extends RemoteTemplateRepository {
+class UriRemoteTemplateRepository(base: URI, log: LoggingAdapter) extends RemoteTemplateRepository {
   protected val layout = new Layout(base)
+
+  override lazy val name: String = {
+    downloadNewIndexProperties("") {
+      props => props.catalogName.getOrElse(throw RepositoryException("index properties file didn't have a catalog name.", null))
+    } { optionalThrowable =>
+      optionalThrowable.map(throw _).getOrElse(throw RepositoryException("Unable to download latest index hash", null))
+    }
+  }
 
   // wrapper around IO.download that logs what's happening
   private def download(url: URL, dest: File): Unit = {
-    log.debug(s"Downloading url ${url} underneath base ${base}")
+    log.debug(s"Downloading url $url underneath base $base")
     // todo: lower timeout on this
     try IO.download(url, dest)
     catch {
       case e: Exception =>
-        log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
-        throw RepositoryException(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}", e)
+        log.error(s"Failed to download $url: ${e.getClass.getName}: ${e.getMessage}")
+        throw RepositoryException(s"Failed to download $url: ${e.getClass.getName}: ${e.getMessage}", e)
     }
   }
 
   private def exists(url: URL): Boolean = {
-    log.debug(s"Checking HEAD for url ${url} underneath base ${base}")
+    log.debug(s"Checking HEAD for url $url underneath base $base")
     try {
       url.openConnection() match {
         case http: HttpURLConnection =>
           http.setRequestMethod("HEAD")
-          http.getResponseCode() match {
+          http.getResponseCode match {
             case 200 =>
               true
             case whatever =>
@@ -60,8 +67,8 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
       }
     } catch {
       case e: Exception =>
-        log.error(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}")
-        throw RepositoryException(s"Failed to download ${url}: ${e.getClass.getName}: ${e.getMessage}", e)
+        log.error(s"Failed to download $url: ${e.getClass.getName}: ${e.getMessage}")
+        throw RepositoryException(s"Failed to download $url: ${e.getClass.getName}: ${e.getMessage}", e)
     }
   }
 
@@ -96,7 +103,7 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
   // Note: Thanks to CLOUD FRONT on AMazon S3, we'd like to
   // grab the more current index file using an anonymous S3 client.
   protected def downloadFromS3(url: URI, dest: File): Unit = try {
-    log.debug(s"Downloading S3 bucket ${url} underneath base ${base}")
+    log.debug(s"Downloading S3 bucket $url underneath base $base")
     val client = makeClient()
 
     val (bucket, key) = getBucketAndKey(url)
@@ -104,11 +111,11 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
     client.getObject(request, dest)
   } catch {
     case e: Exception =>
-      throw RepositoryException(s"Failed to download ${url} from s3: ${e.getClass.getName}: ${e.getMessage}", e)
+      throw RepositoryException(s"Failed to download $url from s3: ${e.getClass.getName}: ${e.getMessage}", e)
   }
 
   protected def existsFromS3(url: URI): Boolean = try {
-    log.debug(s"Checking existence of ${url} underneath base ${base}")
+    log.debug(s"Checking existence of $url underneath base $base")
     val client = makeClient()
 
     val (bucket, key) = getBucketAndKey(url)
@@ -117,16 +124,16 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
     true
   } catch {
     case e: AmazonServiceException =>
-      if (e.getStatusCode() == 404) {
-        log.debug(s"404 on S3 object ${url}: ${e.getStatusCode}: ${e.getErrorCode}: ${e.getMessage}")
+      if (e.getStatusCode == 404) {
+        log.debug(s"404 on S3 object $url: ${e.getStatusCode}: ${e.getErrorCode}: ${e.getMessage}")
         false
       } else {
-        throw RepositoryException(s"Failed to check existence of ${url} on s3: ${e.getClass.getName}: ${e.getMessage}", e)
+        throw RepositoryException(s"Failed to check existence of $url on s3: ${e.getClass.getName}: ${e.getMessage}", e)
       }
     case e: Exception =>
       // Exception includes AmazonClientException which is an error before the
       // http request even gets started (largely should not happen)
-      throw RepositoryException(s"Failed to check existence of ${url} on s3: ${e.getClass.getName}: ${e.getMessage}", e)
+      throw RepositoryException(s"Failed to check existence of $url on s3: ${e.getClass.getName}: ${e.getMessage}", e)
   }
 
   private def downloadTryingS3First(uri: URI, toFile: File): File = {
@@ -136,7 +143,7 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
     catch {
       // Our backup for local-file based testing...
       case ex: RepositoryException =>
-        log.warning(s"Failed to grab s3 bucket, attempting to use http to '${uri}'. (${ex.msg})")
+        log.warning(s"Failed to grab s3 bucket, attempting to use http to '$uri'. (${ex.msg})")
         download(uri.toURL, toFile)
     }
     toFile
@@ -149,7 +156,7 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
     catch {
       // Our backup for local-file based testing...
       case ex: RepositoryException =>
-        log.warning(s"Failed to grab s3 bucket, attempting to use http to '${uri}'. (${ex.msg})")
+        log.warning(s"Failed to grab s3 bucket, attempting to use http to '$uri'. (${ex.msg})")
         exists(uri.toURL)
     }
   }
@@ -196,14 +203,14 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
         val newHash = props.cacheIndexHash.getOrElse(throw RepositoryException("Downloaded catalog properties didn't contain a new index hash", null))
         def differentCache = newHash != currentHash
         if (differentCache && recentEnough) {
-          log.debug(s"Found a new template catalog with hash ${newHash} (we had ${currentHash} before)")
+          log.debug(s"Found a new template catalog with hash $newHash (we had $currentHash before)")
           onNewIndex(props)
         } else {
           if (differentCache) {
             // throw in this case so there's an error message
             throw RepositoryException(s"Template catalog has been updated, but we can only use catalogs with version ${Constants.INDEX_BINARY_MAJOR_VERSION}.${Constants.INDEX_BINARY_INCREMENT_VERSION} and we found ${props.cacheIndexBinaryMajorVersion}.${props.cacheIndexBinaryIncrementVersion}", null)
           } else {
-            log.debug(s"Template catalog is unchanged since we last downloaded it, we already have ${currentHash}.")
+            log.debug(s"Template catalog is unchanged since we last downloaded it, we already have $currentHash.")
             onNotNewIndex(None)
           }
         }
@@ -223,7 +230,7 @@ class UriRemoteTemplateRepository(val name: String, base: URI, log: LoggingAdapt
       download(url, indexZip)
       val zipHash = activator.hashing.hash(indexZip)
       if (zipHash != indexHash)
-        throw RepositoryException(s"Expected hash of ${url} to be ${indexHash} but it was ${zipHash}", null)
+        throw RepositoryException(s"Expected hash of $url to be $indexHash but it was $zipHash", null)
 
       IO.createViaTemporary(indexDirOrFile) { indexExpanded =>
         IO.unzip(indexZip, indexExpanded)

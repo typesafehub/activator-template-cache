@@ -17,7 +17,7 @@ class DefaultTemplateCacheTest {
   var cacheDir: File = null
   var system: ActorSystem = null
   var cache: TemplateCache = null
-  implicit val timeout = akka.util.Timeout(1000L)
+  implicit val timeout = akka.util.Timeout(1, SECONDS)
 
   @Before
   def setup() {
@@ -26,7 +26,7 @@ class DefaultTemplateCacheTest {
     makeTestCache(cacheDir, "default")
     system = ActorSystem()
     // TODO - stub out remote repo
-    cache = DefaultTemplateCache(actorFactory = system, location = cacheDir)
+    cache = DefaultTemplateCache(actorFactory = system, baseDir = cacheDir)
   }
 
   @Test
@@ -136,11 +136,12 @@ class DefaultTemplateCacheTest {
       creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
     locallyCached = false)
 
-  def makeTestCache(dir: File, repoName: String): Unit = {
+  def makeTestCache(baseDir: File, repoName: String): Unit = {
+    val dir = new File(baseDir, repoName)
     val cacheProps = new CacheProperties(new File(dir, Constants.CACHE_PROPS_FILENAME))
     cacheProps.cacheIndexHash = "fakehash-default-template-cache-test"
     cacheProps.save()
-    val writer = LuceneIndexProvider.write(new File(dir, s"${Constants.METADATA_INDEX_FILENAME}.$repoName"))
+    val writer = LuceneIndexProvider.write(new File(dir, Constants.METADATA_INDEX_FILENAME))
     try {
       writer.insert(template1.persistentConfig)
       writer.insert(nonLocalTemplate.persistentConfig)
