@@ -27,7 +27,7 @@ object TemplateCacheSeedGenerator {
 
         case unknown =>
           sys.error(s"""Unknown argument: $unknown
-            Usage:  TemplateCacheSeedGenerator (-remote <repo name> <uri>)... <cache directory>
+            Usage:  TemplateCacheSeedGenerator (-remote <uri>)... <cache directory>
           """)
       }
     parseImpl(Arguments(), args.toList)
