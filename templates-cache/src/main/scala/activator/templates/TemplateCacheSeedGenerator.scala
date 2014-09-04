@@ -20,7 +20,7 @@ object TemplateCacheSeedGenerator {
   def parseUsage(args: Array[String]): Arguments = {
     def parseImpl(args: Arguments, remaining: List[String]): Arguments =
       remaining match {
-        case "-remote" :: remoteName :: remoteUri :: rest =>
+        case "-remote" :: remoteUri :: rest =>
           parseImpl(args.copy(remoteRepos = args.remoteRepos ++ IndexedSeq(new URI(remoteUri))), rest)
 
         case file :: Nil => args.copy(localDirectory = new File(file))
