@@ -84,7 +84,7 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
         index.template(id) match {
           case Some(metadata) =>
             try {
-              val localDir = getTemplateDirAndEnsureLocal(id, Some(remote))
+              val localDir = getTemplateDirAndEnsureLocalForRepo(id, remote)
               val fileMappings = for {
                 file <- allFilesIn(localDir)
                 if !file.isDirectory
@@ -126,20 +126,26 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
   private def isTemplateCached(repoName: String, id: String): Boolean =
     templateLocation(repoName, id).exists
 
-  private def getTemplateDirAndEnsureLocal(id: String, remoteRepo: Option[RemoteTemplateRepository] = None): File = {
-    if (remoteRepo.isDefined) {
-      getTemplateDirAndEnsureLocalForRepo(id, remoteRepo.get, indexes(remoteRepo.get)._1).
-        headOption.getOrElse(throw new RuntimeException("Template not found"))
-    } else {
-      indexes.flatMap {
-        case (remote, (index, _)) =>
-          getTemplateDirAndEnsureLocalForRepo(id, remote, index)
-      }.headOption.getOrElse(throw new RuntimeException("Template not found"))
-    }
+  private def getTemplateDirAndEnsureLocal(id: String): File = {
+    indexes.map {
+      case (remote, (index, _)) =>
+        val templateDir = templateLocation(remote.name, id)
+        if (templateDir.exists) templateDir
+        else {
+          try remote.resolveTemplateTo(id, templateLocation(remote.name, id))
+          catch {
+            case NonFatal(ex) =>
+              // We have a non-fatal exception, let's make sure the template directory is GONE, so the cache is consistent.
+              if (templateDir.isDirectory) sbt.IO delete templateDir
+              // Also, we should probably wrap this in some sort of exception we can use later...
+              throw ResolveTemplateException(s"Unable to download template: $id", ex)
+          }
+        }
+    }.headOption.getOrElse(throw new RuntimeException("Template not found"))
   }
 
-  private def getTemplateDirAndEnsureLocalForRepo(id: String, remote: RemoteTemplateRepository, index: IndexDb): Option[File] = {
-    index.template(id).map { _ =>
+  private def getTemplateDirAndEnsureLocalForRepo(id: String, remote: RemoteTemplateRepository): File = {
+    indexes(remote)._1.template(id).map { _ =>
       val templateDir = templateLocation(remote.name, id)
       if (templateDir.exists) templateDir
       else {
@@ -152,7 +158,7 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
             throw ResolveTemplateException(s"Unable to download template: $id", ex)
         }
       }
-    }
+    }.headOption.getOrElse(throw new RuntimeException("Template not found"))
   }
 
   override def preStart(): Unit = {
