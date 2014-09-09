@@ -22,7 +22,7 @@ class CacheProperties(val location: java.io.File) {
     props.setProperty(Constants.CACHE_HASH_PROPERTY, newId)
   }
 
-  def catalogName: Option[String] = Option(props.getProperty(Constants.CATALOG_METADATA_NAME)) filter (_.trim() != "")
+  def catalogName: Option[String] = Option(props.getProperty(Constants.CATALOG_METADATA_NAME)).map(_.trim()).filter(_ != "")
   def catalogName_=(newName: String) = {
     props.setProperty(Constants.CATALOG_METADATA_NAME, newName)
   }

@@ -55,8 +55,8 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
     case _ => sender ! Status.Failure(e)
   }
 
-  def listTemplates = indexes.flatMap(value => fillMetadata(value._1, value._2._1.metadata))
-  def listFeaturedTemplates = indexes.flatMap(value => fillMetadata(value._1, value._2._1.featured))
+  def listTemplates = indexes.flatMap(value => fillMetadata(value._1, value._2._1.metadata)).toSet
+  def listFeaturedTemplates = indexes.flatMap(value => fillMetadata(value._1, value._2._1.featured)).toSet
 
   def searchTemplates(query: String, max: Int): Iterable[TemplateMetadata] =
     indexes.flatMap(value => fillMetadata(value._1, value._2._1.search(query, max)))
@@ -127,7 +127,9 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
     templateLocation(repoName, id).exists
 
   private def getTemplateDirAndEnsureLocal(id: String): File = {
-    indexes.map {
+    // Only resolve template for a repository that contains it,
+    // so that we can throw an exception when it should be there but we can't download it
+    indexes.filter(_._2._1.template(id).isDefined).map {
       case (remote, (index, _)) =>
         val templateDir = templateLocation(remote.name, id)
         if (templateDir.exists) templateDir
@@ -162,10 +164,15 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
   }
 
   override def preStart(): Unit = {
-    remotes.foreach(preStartRepository)
+    val messages = remotes.map(preStartRepository)
+    if (messages.forall(_.isInstanceOf[InitializeNormal.type])) {
+      self ! InitializeNormal
+    } else {
+      messages.foreach(self ! _)
+    }
   }
 
-  private def preStartRepository(remote: RemoteTemplateRepository) = {
+  private def preStartRepository(remote: RemoteTemplateRepository): InitializeMessage = {
     // Our index is underneath the cache location...
     val cachePropertiesFile = CacheProperties.propertiesFileForRepository(baseDir, remote.name, log)
     val props = new CacheProperties(cachePropertiesFile)
@@ -224,7 +231,7 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
           Some(e)
         }
     }
-    val noteToSelf: InitializeMessage = fatalError map { e =>
+    fatalError map { e =>
       log.error(e, s"Could not find a template catalog. (${e.getClass.getName}: ${e.getMessage}")
       InitializeFailure(e)
     } getOrElse {
@@ -239,7 +246,6 @@ class TemplateCacheActor(provider: IndexDbProvider, baseDir: File, remotes: Inde
           InitializeFailure(e)
       }
     }
-    self ! noteToSelf
   }
 
   override def postStop(): Unit = {
