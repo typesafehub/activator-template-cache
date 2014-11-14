@@ -4,13 +4,13 @@
 import sbt._
 
 object Dependencies {
-  val scalaVersion            = "2.11.1"
-  val scalaBinaryVersion      = "2.11"
-  val sbtDependencyVersion    = "0.13.6-MSERVER-4"
+  val scalaVersion            = "2.10.4"
+  val scalaBinaryVersion      = "2.10"
+  val sbtDependencyVersion    = "0.13.5"
   val akkaVersion             = "2.3.3"
   val luceneVersion           = "4.3.0"
 
-  val sbtIo                   = "org.scala-sbt"           %% "io"                       % sbtDependencyVersion
+  val sbtIo                   = "org.scala-sbt"           % "io"                        % sbtDependencyVersion
   val commonsCompress         = "org.apache.commons"      % "commons-compress"          % "1.4.1"
   val jgit                    = "org.eclipse.jgit"        % "org.eclipse.jgit.pgm"      % "2.2.0.201212191850-r"
   val akkaActor               = "com.typesafe.akka"       %% "akka-actor"               % akkaVersion
@@ -18,11 +18,9 @@ object Dependencies {
   val luceneAnalyzerCommon    = "org.apache.lucene"       % "lucene-analyzers-common"   % luceneVersion
   val luceneQueryParser       = "org.apache.lucene"       % "lucene-queryparser"        % luceneVersion
   val amazonWS                = "com.amazonaws"           % "aws-java-sdk"              % "1.3.29"
-  val scalaXml                = "org.scala-lang.modules"  %% "scala-xml"                % "1.0.1"
-  val scalaParserCombinators  = "org.scala-lang.modules"  %% "scala-parser-combinators" % "1.0.1"
 
   val junitInterface          = "com.novocode"            % "junit-interface"           % "0.10"
-  val specs2                  = "org.specs2"              % "specs2_2.11"               % "2.3.12"
+  val specs2                  = "org.specs2"              %% "specs2"                   % "2.3.12"
 
   // Mini DSL
   // DSL for adding remote deps like local deps.

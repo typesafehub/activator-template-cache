@@ -23,8 +23,6 @@ object ActivatorTemplatesBuild extends Build {
   lazy val common = (
     ActivatorProject("common")
     dependsOnRemote(
-      scalaXml,
-      scalaParserCombinators,
       commonsCompress,
       sbtIo % "test"
     )
@@ -34,8 +32,6 @@ object ActivatorTemplatesBuild extends Build {
   lazy val templatesCache = (
     ActivatorProject("templates-cache")
     dependsOnRemote(
-      scalaXml,
-      scalaParserCombinators,
       sbtIo,
       lucene, 
       luceneAnalyzerCommon, 
