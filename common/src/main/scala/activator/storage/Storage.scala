@@ -283,6 +283,11 @@ trait StorageRestOps {
 
   def setIndexed(name: String, indexed: Boolean)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
 
+  /**
+   * Get a list of all templates that are not indexed.
+   */
+  def notIndexed()(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Seq[String]]
+
   def setCategory(name: String, category: String)(implicit auth: ProofOfAuthentication, ec: ExecutionContext): Future[Unit]
 
   // check-in from a worker (notifies that worker is alive)
