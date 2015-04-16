@@ -6,6 +6,8 @@ import Keys._
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import com.typesafe.sbt.SbtGit
+import bintray.Plugin.bintrayPublishSettings
+import bintray.Keys._
 
 object ActivatorBuild {
 
@@ -37,8 +39,6 @@ object ActivatorBuild {
       crossPaths := false,
       resolvers += "typesafe-mvn-releases" at "http://repo.typesafe.com/typesafe/releases/",
       resolvers += typesafeIvyReleases,
-      // TODO - Publish to ivy for sbt plugins, maven central otherwise?
-      publishTo := Some(typesafeIvyReleases),
       publishMavenStyle := false,
       scalacOptions <<= (scalaVersion) map { sv =>
         Seq("-unchecked", "-deprecation") ++
@@ -48,7 +48,12 @@ object ActivatorBuild {
       javacOptions in (Compile, doc) := Seq("-source", "1.6"),
       scalaVersion := Dependencies.scalaVersion,
       scalaBinaryVersion := Dependencies.scalaBinaryVersion,
-      libraryDependencies ++= Seq(Dependencies.junitInterface % "test", Dependencies.specs2 % "test"))
+      libraryDependencies ++= Seq(Dependencies.junitInterface % "test", Dependencies.specs2 % "test")) ++
+    bintrayPublishSettings ++
+    Seq(
+      bintrayOrganization in bintray := Some("typesafe"),
+      repository in bintray := "ivy-releases",
+      licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.html")))
 
   def activatorDefaults: Seq[Setting[_]] =
     SbtScalariform.scalariformSettings ++
