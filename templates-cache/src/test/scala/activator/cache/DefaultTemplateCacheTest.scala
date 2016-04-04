@@ -4,20 +4,24 @@
 package activator
 package cache
 
+import java.io.File
+import java.util.Properties
+import java.util.concurrent.TimeUnit
+
+import akka.actor._
 import org.junit.Assert._
 import org.junit._
-import java.io.File
-import akka.actor._
-import concurrent.Await
-import concurrent.duration._
 import sbt.IO
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class DefaultTemplateCacheTest {
 
   var cacheDir: File = null
   var system: ActorSystem = null
   var cache: TemplateCache = null
-  implicit val timeout = akka.util.Timeout(1000L)
+  implicit val timeout = akka.util.Timeout(1000L, TimeUnit.MILLISECONDS)
 
   @Before
   def setup() {
@@ -39,6 +43,58 @@ class DefaultTemplateCacheTest {
       case (file, name) => name == "build.sbt"
     }
     assertTrue("Failed to find template files!", hasBuildSbt)
+  }
+
+  private def makeTemplateDirectory(templateDir: File, templateName: String, description: String): Unit = {
+    val properties: Properties =
+      AuthorDefinedTemplateMetadata(
+        name = templateName,
+        title = templateName,
+        description = description,
+        authorName = None,
+        authorLink = None,
+        authorBio = None,
+        authorLogo = None,
+        authorTwitter = None,
+        tags = Seq("seed"),
+        templateTemplate = false,
+        sourceLink = None).toProperties
+
+    IO.write(
+      properties,
+      label = s"Author defined template metadata for $templateName", new File(templateDir, Constants.METADATA_FILENAME))
+  }
+
+  @Test
+  def resolveNonIndexedTemplate(): Unit = {
+    val system = ActorSystem()
+    var dirs = Seq(IO.createTemporaryDirectory, IO.createTemporaryDirectory)
+    val cacheDir = dirs.head
+    val seedRepository = dirs(1)
+    val templateDir = new File(seedRepository, "test")
+    val tempDesc = "test"
+
+    IO.createDirectory(templateDir)
+    dirs = dirs :+ templateDir
+    makeTemplateDirectory(templateDir, templateName = "test", description = tempDesc)
+
+    try {
+      makeTestCache(cacheDir)
+      val cache =
+        DefaultTemplateCache(
+          actorFactory = system,
+          location = cacheDir,
+          remote = StubRemoteRepository,
+          seedRepository = Some(seedRepository))
+
+      val result: Option[TemplateMetadata] = Await.result(cache.searchByName("test"), Duration(1, MINUTES))
+
+      assertTrue(result.nonEmpty)
+      result.map(_.description).foreach(desc => assertTrue(desc == tempDesc))
+    } finally {
+      dirs foreach IO.delete
+      system.shutdown()
+    }
   }
 
   @Test
@@ -67,7 +123,7 @@ class DefaultTemplateCacheTest {
       Await.result(cache.featured, Duration(1, MINUTES))
     val hasMetadata = metadata exists { _ == template1 }
     assertTrue("Failed to find metadata!", hasMetadata)
-    assertFalse("Featured metadata has unfeatured template.", metadata.exists(_ == nonLocalTemplate))
+    assertFalse("Featured metadata has non-featured template.", metadata.exists(_ == nonLocalTemplate))
   }
 
   @Test
@@ -75,7 +131,7 @@ class DefaultTemplateCacheTest {
     val metadata =
       Await.result(cache.search("test"), Duration(1, MINUTES))
     val hasMetadata = metadata exists { _ == template1 }
-    assertTrue("Failed to find metadata in seaarch!", hasMetadata)
+    assertTrue("Failed to find metadata in search!", hasMetadata)
   }
 
   @Test
@@ -83,7 +139,7 @@ class DefaultTemplateCacheTest {
     val metadata =
       Await.result(cache.search("Ralph"), Duration(1, MINUTES))
     val hasMetadata = metadata exists { _ == template1 }
-    assertFalse("Failed to find metadata in seaarch!", hasMetadata)
+    assertFalse("Failed to find metadata in search!", hasMetadata)
   }
 
   @After

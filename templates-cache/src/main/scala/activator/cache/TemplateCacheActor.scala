@@ -4,15 +4,14 @@
 package activator
 package cache
 
-import java.io.{ File, FileInputStream, FilenameFilter, InputStream }
-import java.nio.file.{ Files, Path, Paths }
+import java.io.{ File, FileInputStream, FilenameFilter }
 import java.util.{ Date, Properties, UUID }
 
+import activator.templates.repository.RepositoryException
 import akka.actor.{ Actor, ActorLogging, Stash, Status }
-import sbt.{ FileFilter, IO, PathFinder }
+import sbt.{ IO, PathFinder }
 
 import scala.util.control.NonFatal
-import activator.templates.repository.RepositoryException
 
 /** This class represents the inability to resolve a template from the internet, and not some other fatal error. */
 case class ResolveTemplateException(msg: String, cause: Throwable) extends RuntimeException(msg, cause)
@@ -151,6 +150,9 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
         } map { activatorPropertiesFile =>
           val props = new Properties()
           props.load(new FileInputStream(activatorPropertiesFile))
+
+          val authorDefinedTemplateMetadata = AuthorDefinedTemplateMetadata.fromProperties(props)
+
           val time: Long = new Date().getTime
           (
             activatorPropertiesFile.getParentFile,
@@ -159,17 +161,17 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
               timeStamp = time,
               featured = false,
               usageCount = None,
-              name = props.getProperty("name"),
-              title = props.getProperty("title"),
-              description = props.getProperty("description"),
-              authorName = Option(props.getProperty("authorName")).getOrElse("Anonymous"),
-              authorLink = Option(props.getProperty("authorLink")).getOrElse(""),
-              tags = props.getProperty("tags").split(','),
+              name = authorDefinedTemplateMetadata.name,
+              title = authorDefinedTemplateMetadata.title,
+              description = authorDefinedTemplateMetadata.description,
+              authorName = authorDefinedTemplateMetadata.authorName.getOrElse("Anonymous"),
+              authorLink = authorDefinedTemplateMetadata.authorLink.getOrElse(""),
+              tags = authorDefinedTemplateMetadata.tags,
               templateTemplate = false,
-              sourceLink = Option(props.getProperty("sourceLink")).getOrElse(""),
-              authorLogo = Option(props.getProperty("authorLogo")),
-              authorBio = Option(props.getProperty("authorBio")),
-              authorTwitter = Option(props.getProperty("authorTwitter")),
+              sourceLink = authorDefinedTemplateMetadata.sourceLink.getOrElse(""),
+              authorLogo = authorDefinedTemplateMetadata.authorLogo,
+              authorBio = authorDefinedTemplateMetadata.authorBio,
+              authorTwitter = authorDefinedTemplateMetadata.authorTwitter,
               category = TemplateMetadata.Category.COMPANY,
               creationTime = time))
         }
@@ -187,7 +189,6 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           case (file, templateMetadata) =>
             IO.copyDirectory(file, new File(location, templateMetadata.id))
             writer.insert(templateMetadata)
-            file.delete()
         }
         true
       } else false
@@ -267,24 +268,26 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
         log.error(e, s"Could not find a template catalog. (${e.getClass.getName}: ${e.getMessage}")
         InitializeFailure(e)
       } getOrElse {
-        // try actually opening the index
         val index: IndexDb = provider.open(indexFile)
-        try {
-          if (!indexNonIndexedTemplates(index)) {
+        val reIndex: Boolean =
+          try {
+            !indexNonIndexedTemplates(index)
+          } finally {
             index.close()
+          }
+        try {
+          if (reIndex) {
             indexFile.delete()
             initIndex
           } else {
-            this.index = index
+            // try actually opening the index
+            this.index = provider.open(indexFile)
             InitializeNormal
           }
         } catch {
           case NonFatal(e) =>
             log.error(e, s"Could not open the template catalog. (${e.getClass.getName}: ${e.getMessage}")
             InitializeFailure(e)
-        } finally {
-          if (this.index == null)
-            index.close()
         }
       }
       noteToSelf

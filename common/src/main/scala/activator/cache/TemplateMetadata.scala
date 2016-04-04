@@ -5,8 +5,11 @@ package activator
 package cache
 
 import java.net.URISyntaxException
+
 import scala.concurrent.Future
 import java.net.URLEncoder
+import java.util.Properties
+
 import scala.concurrent.ExecutionContext
 
 /**
@@ -146,10 +149,53 @@ case class AuthorDefinedTemplateMetadata(
     else
       ProcessFailure(errors.map(ProcessError(_)))
   }
+
+  def toProperties: Properties = {
+    import activator.cache.{ AuthorDefinedTemplateMetadata => p }
+    implicit val properties = new Properties()
+
+    p.authorName.value = authorName
+    p.authorTwitter.value = authorTwitter
+    p.authorBio.value = authorBio
+    p.authorLogo.value = authorLogo
+    p.authorLink.value = authorLink
+    p.description.value = description
+    p.name.value = name
+    p.sourceLink.value = sourceLink
+    p.title.value = title
+    p.tags.value = tags.mkString(",")
+
+    properties
+  }
 }
 
 object AuthorDefinedTemplateMetadata {
+  private def name(implicit properties: Properties) = Property("name", properties)
+  private def title(implicit properties: Properties) = Property("title", properties)
+  private def description(implicit properties: Properties) = Property("description", properties)
+  private def authorName(implicit properties: Properties) = OptionalProperty("authorName", properties)
+  private def authorLink(implicit properties: Properties) = OptionalProperty("authorLink", properties)
+  private def tags(implicit properties: Properties) = Property("tags", properties)
+  private def sourceLink(implicit properties: Properties) = OptionalProperty("sourceLink", properties)
+  private def authorLogo(implicit properties: Properties) = OptionalProperty("authorLogo", properties)
+  private def authorBio(implicit properties: Properties) = OptionalProperty("authorBio", properties)
+  private def authorTwitter(implicit properties: Properties) = OptionalProperty("authorTwitter", properties)
 
+  def fromProperties(properties: Properties): AuthorDefinedTemplateMetadata = {
+    implicit val p = properties
+    AuthorDefinedTemplateMetadata(
+      name = name.value,
+      title = title.value,
+      description = description.value,
+      authorName = authorName.value,
+      authorLink = authorLink.value,
+      tags = tags.value.split(','),
+      templateTemplate = false,
+      sourceLink = sourceLink.value,
+      authorLogo = authorLogo.value,
+      authorBio = authorBio.value,
+      authorTwitter = authorTwitter.value)
+  }
 }
 
 /**
