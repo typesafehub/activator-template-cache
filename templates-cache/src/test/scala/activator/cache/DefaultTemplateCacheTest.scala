@@ -67,34 +67,47 @@ class DefaultTemplateCacheTest {
 
   @Test
   def resolveNonIndexedTemplate(): Unit = {
-    val system = ActorSystem()
+    implicit val system = ActorSystem()
     var dirs = Seq(IO.createTemporaryDirectory, IO.createTemporaryDirectory)
     val cacheDir = dirs.head
     val seedRepository = dirs(1)
     val templateDir = new File(seedRepository, "test")
-    val tempDesc = "test"
+    val templateDesc = "test"
 
     IO.createDirectory(templateDir)
     dirs = dirs :+ templateDir
-    makeTemplateDirectory(templateDir, templateName = "test", description = tempDesc)
+    makeTemplateDirectory(templateDir, templateName = "test", description = templateDesc)
 
     try {
       makeTestCache(cacheDir)
-      val cache =
-        DefaultTemplateCache(
-          actorFactory = system,
-          location = cacheDir,
-          remote = StubRemoteRepository,
-          seedRepository = Some(seedRepository))
 
-      val result: Option[TemplateMetadata] = Await.result(cache.searchByName("test"), Duration(1, MINUTES))
+      resolveNonIndexedTemplate(seedRepository, templateDesc, cacheDir)
 
-      assertTrue(result.nonEmpty)
-      result.map(_.description).foreach(desc => assertTrue(desc == tempDesc))
+      IO delete templateDir
+      IO.createDirectory(templateDir)
+
+      makeTemplateDirectory(templateDir, templateName = "test", description = "test2")
+      resolveNonIndexedTemplate(seedRepository, templateDesc = "test2", cacheDir)
     } finally {
       dirs foreach IO.delete
       system.shutdown()
     }
+  }
+
+  private def resolveNonIndexedTemplate(seedRepository: File, templateDesc: String, cacheDir: File)(implicit system: ActorSystem): Unit = {
+    val cache =
+      DefaultTemplateCache(
+        actorFactory = system,
+        location = cacheDir,
+        remote = new StubRemoteRepository(template1, nonLocalTemplate),
+        seedRepository = Some(seedRepository))
+
+    val result: Option[TemplateMetadata] = Await.result(cache.searchByName("test"), Duration(1, MINUTES))
+
+    assertTrue(result.nonEmpty)
+    result.map(_.description).foreach(desc => assertTrue(desc == templateDesc))
+
+    cache.close()
   }
 
   @Test

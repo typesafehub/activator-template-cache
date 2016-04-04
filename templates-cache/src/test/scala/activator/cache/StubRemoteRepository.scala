@@ -6,52 +6,11 @@ import java.util.UUID
 
 import sbt.IO
 
-object StubRemoteRepository extends RemoteTemplateRepository {
+class StubRemoteRepository(
+  val template1: TemplateMetadata,
+  val nonLocalTemplate: TemplateMetadata) extends RemoteTemplateRepository {
   val FIRST_INDEX_ID = "FIRST INDEX"
   val SECOND_INDEX_ID = "SECOND INDEX"
-
-  val template1 = TemplateMetadata(
-    IndexStoredTemplateMetadata(
-      id = "ID-1",
-      timeStamp = 1L,
-      featured = true,
-      usageCount = None,
-      name = "test-template",
-      title = "A Testing Template",
-      description = "A template that tests template existance.",
-      authorName = "Jim Bob",
-      authorLink = "http://example.com/jimbob/",
-      tags = Seq("test", "template"),
-      templateTemplate = false,
-      sourceLink = "http://example.com/source",
-      authorLogo = Some("http://example.com/logo.png"),
-      authorBio = Some("Blah blah blah blah"),
-      authorTwitter = Some("blah"),
-      category = TemplateMetadata.Category.COMPANY,
-      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
-    locallyCached = true)
-
-  val nonLocalTemplate = TemplateMetadata(
-    IndexStoredTemplateMetadata(
-      id = "ID-2",
-      timeStamp = 1L,
-      featured = false,
-      usageCount = None,
-      name = "test-remote-template",
-      title = "A Testing Template that is not dowloaded",
-      description = "A template that tests template existentialism.",
-      authorName = "Jim Bob",
-      authorLink = "http://example.com/jimbob/",
-      tags = Seq("test", "template"),
-      templateTemplate = true,
-      sourceLink = "http://example.com/source",
-      authorLogo = Some("http://example.com/logo.png"),
-      authorBio = Some("Blah blah blah blah"),
-      authorTwitter = Some("blah"),
-      category = TemplateMetadata.Category.COMPANY,
-      creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
-    locallyCached = false)
-
   val newNonLocalTemplate = TemplateMetadata(
     IndexStoredTemplateMetadata(
       id = "ID-3",

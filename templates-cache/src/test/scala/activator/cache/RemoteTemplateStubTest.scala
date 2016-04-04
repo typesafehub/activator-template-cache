@@ -7,7 +7,6 @@ package cache
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-import activator.cache.StubRemoteRepository._
 import akka.actor._
 import org.junit.Assert._
 import org.junit._
@@ -20,7 +19,51 @@ class RemoteTemplateStubTest {
   var cacheDir: File = null
   var system: ActorSystem = null
   var cache: TemplateCache = null
+  val stubRemoteRepository =
+    new StubRemoteRepository(
+      template1 = TemplateMetadata(
+        IndexStoredTemplateMetadata(
+          id = "ID-1",
+          timeStamp = 1L,
+          featured = true,
+          usageCount = None,
+          name = "test-template",
+          title = "A Testing Template",
+          description = "A template that tests template existance.",
+          authorName = "Jim Bob",
+          authorLink = "http://example.com/jimbob/",
+          tags = Seq("test", "template"),
+          templateTemplate = false,
+          sourceLink = "http://example.com/source",
+          authorLogo = Some("http://example.com/logo.png"),
+          authorBio = Some("Blah blah blah blah"),
+          authorTwitter = Some("blah"),
+          category = TemplateMetadata.Category.COMPANY,
+          creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
+        locallyCached = true),
+      nonLocalTemplate = TemplateMetadata(
+        IndexStoredTemplateMetadata(
+          id = "ID-2",
+          timeStamp = 1L,
+          featured = false,
+          usageCount = None,
+          name = "test-remote-template",
+          title = "A Testing Template that is not dowloaded",
+          description = "A template that tests template existentialism.",
+          authorName = "Jim Bob",
+          authorLink = "http://example.com/jimbob/",
+          tags = Seq("test", "template"),
+          templateTemplate = true,
+          sourceLink = "http://example.com/source",
+          authorLogo = Some("http://example.com/logo.png"),
+          authorBio = Some("Blah blah blah blah"),
+          authorTwitter = Some("blah"),
+          category = TemplateMetadata.Category.COMPANY,
+          creationTime = TemplateMetadata.LEGACY_CREATION_TIME),
+        locallyCached = false))
+  import stubRemoteRepository._
   implicit val timeout = akka.util.Timeout(60 * 1000L, TimeUnit.MILLISECONDS)
+
   @Before
   def setup() {
     cacheDir = IO.createTemporaryDirectory
@@ -31,7 +74,7 @@ class RemoteTemplateStubTest {
     cache = DefaultTemplateCache(
       actorFactory = system,
       location = cacheDir,
-      remote = StubRemoteRepository)
+      remote = stubRemoteRepository)
   }
 
   @Test

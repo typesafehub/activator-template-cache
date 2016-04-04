@@ -180,7 +180,10 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
         templates.exists {
           case (_, templateMetadata) =>
             index.templateByName(templateMetadata.name) exists { indexedTemplate =>
-              templateMetadata.copy(id = indexedTemplate.id) != indexedTemplate
+              templateMetadata.copy(
+                id = indexedTemplate.id,
+                timeStamp = indexedTemplate.timeStamp,
+                creationTime = indexedTemplate.creationTime) != indexedTemplate
             }
         }
 
@@ -189,9 +192,17 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           case (file, templateMetadata) =>
             IO.copyDirectory(file, new File(location, templateMetadata.id))
             writer.insert(templateMetadata)
+            IO delete file
         }
         true
-      } else false
+      } else {
+        templates.flatMap { case (_, templateMetadata) => index.templateByName(templateMetadata.name) } foreach {
+          case (templateMetadata) =>
+            val file: File = new File(location, templateMetadata.id)
+            if (file.exists()) IO.delete(file)
+        }
+        false
+      }
     } finally {
       writer.close()
     }
@@ -277,7 +288,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           }
         try {
           if (reIndex) {
-            indexFile.delete()
+            IO delete indexFile
             initIndex
           } else {
             // try actually opening the index
