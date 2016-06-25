@@ -180,10 +180,18 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
         templates.exists {
           case (_, templateMetadata) =>
             index.templateByName(templateMetadata.name) exists { indexedTemplate =>
-              templateMetadata.copy(
-                id = indexedTemplate.id,
-                timeStamp = indexedTemplate.timeStamp,
-                creationTime = indexedTemplate.creationTime) != indexedTemplate
+              val different =
+                templateMetadata.copy(
+                  id = indexedTemplate.id,
+                  timeStamp = indexedTemplate.timeStamp,
+                  creationTime = indexedTemplate.creationTime
+                ) != indexedTemplate
+              if(different) {
+                log.debug(s"Template needs to be re indexed ${templateMetadata.name}")
+                log.debug(s"Template $templateMetadata")
+                log.debug(s"Indexed Template $indexedTemplate")
+              }
+              different
             }
         }
 
@@ -192,6 +200,8 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           case (file, templateMetadata) =>
             IO.copyDirectory(file, new File(location, templateMetadata.id))
             writer.insert(templateMetadata)
+            log.debug(s"Template ${templateMetadata.name}  indexed as ${templateMetadata.id}")
+            log.debug(s"Template $templateMetadata")
             IO delete file
         }
         true
@@ -288,6 +298,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
           }
         try {
           if (reIndex) {
+            log.debug("re-indexing")
             IO delete indexFile
             initIndex
           } else {
