@@ -180,15 +180,19 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
         templates.exists {
           case (_, templateMetadata) =>
             index.templateByName(templateMetadata.name) exists { indexedTemplate =>
-              val different =
+              val mergedTemplateInfo: IndexStoredTemplateMetadata =
                 templateMetadata.copy(
                   id = indexedTemplate.id,
                   timeStamp = indexedTemplate.timeStamp,
-                  creationTime = indexedTemplate.creationTime
-                ) != indexedTemplate
-              if(different) {
-                log.debug(s"Template needs to be re indexed ${templateMetadata.name}")
-                log.debug(s"Template $templateMetadata")
+                  creationTime = indexedTemplate.creationTime,
+                  featured = indexedTemplate.featured,
+                  usageCount = indexedTemplate.usageCount,
+                  templateTemplate = indexedTemplate.templateTemplate,
+                  category = indexedTemplate.category)
+              val different = mergedTemplateInfo != indexedTemplate
+              if (different) {
+                log.debug(s"Template needs to be re indexed ${mergedTemplateInfo.name}")
+                log.debug(s"Template $mergedTemplateInfo")
                 log.debug(s"Indexed Template $indexedTemplate")
               }
               different
