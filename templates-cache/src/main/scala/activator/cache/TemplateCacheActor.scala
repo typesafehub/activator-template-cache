@@ -146,14 +146,14 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     try {
       val templates: Array[(File, IndexStoredTemplateMetadata)] =
         location.listFiles().flatMap { file =>
-          if (file.isDirectory) file.listFiles(isActivatorProperties) else Nil
+          if (file.isDirectory && index.template(file.getName).isEmpty) file.listFiles(isActivatorProperties) else Nil
         } map { activatorPropertiesFile =>
           val props = new Properties()
           props.load(new FileInputStream(activatorPropertiesFile))
 
           val authorDefinedTemplateMetadata = AuthorDefinedTemplateMetadata.fromProperties(props)
-
           val time: Long = new Date().getTime
+
           (
             activatorPropertiesFile.getParentFile,
             IndexStoredTemplateMetadata(
@@ -173,7 +173,9 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
               authorBio = authorDefinedTemplateMetadata.authorBio,
               authorTwitter = authorDefinedTemplateMetadata.authorTwitter,
               category = TemplateMetadata.Category.COMPANY,
-              creationTime = time))
+              creationTime = time
+            )
+          )
         }
 
       val templateNeedsToBeReIndexed: Boolean =
