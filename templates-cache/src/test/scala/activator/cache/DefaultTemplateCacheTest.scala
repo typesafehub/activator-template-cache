@@ -80,14 +80,7 @@ class DefaultTemplateCacheTest {
 
     try {
       makeTestCache(cacheDir)
-
       resolveNonIndexedTemplate(seedRepository, templateDesc, cacheDir)
-
-      IO delete templateDir
-      IO.createDirectory(templateDir)
-
-      makeTemplateDirectory(templateDir, templateName = "test", description = "test2")
-      resolveNonIndexedTemplate(seedRepository, templateDesc = "test2", cacheDir)
     } finally {
       dirs foreach IO.delete
       system.shutdown()

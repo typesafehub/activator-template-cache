@@ -136,7 +136,7 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
     }
   }
 
-  private def indexNonIndexedTemplates(index: IndexDb): Boolean = {
+  private def indexNonIndexedTemplates(index: IndexDb) {
     val isActivatorProperties = new FilenameFilter {
       override def accept(dir: File, name: String): Boolean =
         name.equals(Constants.METADATA_FILENAME)
@@ -173,52 +173,18 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
               authorBio = authorDefinedTemplateMetadata.authorBio,
               authorTwitter = authorDefinedTemplateMetadata.authorTwitter,
               category = TemplateMetadata.Category.COMPANY,
-              creationTime = time
-            )
-          )
+              creationTime = time))
         }
 
-      val templateNeedsToBeReIndexed: Boolean =
-        templates.exists {
-          case (_, templateMetadata) =>
-            index.templateByName(templateMetadata.name) exists { indexedTemplate =>
-              val mergedTemplateInfo: IndexStoredTemplateMetadata =
-                templateMetadata.copy(
-                  id = indexedTemplate.id,
-                  timeStamp = indexedTemplate.timeStamp,
-                  creationTime = indexedTemplate.creationTime,
-                  featured = indexedTemplate.featured,
-                  usageCount = indexedTemplate.usageCount,
-                  templateTemplate = indexedTemplate.templateTemplate,
-                  category = indexedTemplate.category)
-              val different = mergedTemplateInfo != indexedTemplate
-              if (different) {
-                log.debug(s"Template needs to be re indexed ${mergedTemplateInfo.name}")
-                log.debug(s"Template $mergedTemplateInfo")
-                log.debug(s"Indexed Template $indexedTemplate")
-              }
-              different
-            }
-        }
-
-      if (!templateNeedsToBeReIndexed) {
-        templates.filter(Function.tupled((_, templateMetadata) => index.templateByName(templateMetadata.name).isEmpty)) foreach {
-          case (file, templateMetadata) =>
-            IO.copyDirectory(file, new File(location, templateMetadata.id))
-            writer.insert(templateMetadata)
-            log.debug(s"Template ${templateMetadata.name}  indexed as ${templateMetadata.id}")
-            log.debug(s"Template $templateMetadata")
-            IO delete file
-        }
-        true
-      } else {
-        templates.flatMap { case (_, templateMetadata) => index.templateByName(templateMetadata.name) } foreach {
-          case (templateMetadata) =>
-            val file: File = new File(location, templateMetadata.id)
-            if (file.exists()) IO.delete(file)
-        }
-        false
+      templates.filter(Function.tupled((_, templateMetadata) => index.templateByName(templateMetadata.name).isEmpty)) foreach {
+        case (file, templateMetadata) =>
+          IO.copyDirectory(file, new File(location, templateMetadata.id))
+          writer.insert(templateMetadata)
+          log.debug(s"Template ${templateMetadata.name}  indexed as ${templateMetadata.id}")
+          log.debug(s"Template $templateMetadata")
+          IO delete file
       }
+
     } finally {
       writer.close()
     }
@@ -291,27 +257,21 @@ class TemplateCacheActor(provider: IndexDbProvider, location: File, remote: Remo
             Some(e)
           }
       }
+
       val noteToSelf: InitializeMessage = fatalError map { e =>
         log.error(e, s"Could not find a template catalog. (${e.getClass.getName}: ${e.getMessage}")
         InitializeFailure(e)
       } getOrElse {
         val index: IndexDb = provider.open(indexFile)
-        val reIndex: Boolean =
-          try {
-            !indexNonIndexedTemplates(index)
-          } finally {
-            index.close()
-          }
         try {
-          if (reIndex) {
-            log.debug("re-indexing")
-            IO delete indexFile
-            initIndex
-          } else {
-            // try actually opening the index
-            this.index = provider.open(indexFile)
-            InitializeNormal
-          }
+          indexNonIndexedTemplates(index)
+        } finally {
+          index.close()
+        }
+        try {
+          // try actually opening the index
+          this.index = provider.open(indexFile)
+          InitializeNormal
         } catch {
           case NonFatal(e) =>
             log.error(e, s"Could not open the template catalog. (${e.getClass.getName}: ${e.getMessage}")
